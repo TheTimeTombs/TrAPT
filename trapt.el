@@ -5,11 +5,6 @@
 space."
   (mapconcat #'identity arglist " "))
 
-(defun apt-remove (package)
-  "Remove PACKAGE using apt."
-  (interactive "sPackage to remove: ")
-  (async-shell-command (concat "sudo apt remove -y " package)))
-
 (defun apt-upgrade ()
   "Upgrade package lists using APT."
   (interactive)
@@ -41,7 +36,7 @@ space."
                                  (apt--args-to-string arguments)))))
 
 (defun apt-remove (package)
-  "Install a package with "
+  "Remove a package with APT."
   (interactive "sPackage to remove: ")
   (async-shell-command (concat "sudo apt remove -y "
                                package)))
