@@ -91,4 +91,4 @@ space."
     ("U" "Upgrade" apt-upgrade)
     ("f" "Full Upgrade" apt-full-upgrade)]])
 
-(provide 'freemacs-apt)
+(provide 'freemacs-trapt)
