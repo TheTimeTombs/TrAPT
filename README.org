@@ -1,0 +1,48 @@
+* TRAPT
+
+Use TRansient menus to interact with the APT package manager.
+
+* Features
+
++ Use a tranisent menu to inteact with the following APT commands or directly through an interactive Emacs function:
+  - install
+  - remove
+  - purge
+  - autoremove
+  - list
++ Addionally, install and remove programs with APT from an Org mode buffer.
+
+* Installation
+
+Clone this repo into your Emacs load path and 
+
+* Usage
+
+** Using a Tranisent Mentu
+
+Call the transient menu with ~M-x trapt~. This will open the transient menu.
+
+** Call Individual Functions Directly
+
+You can also run the following commands directly. Calling these functions will prompt the user for input.
+
+ | Emacs Function         | APT Command      |
+ |------------------------+------------------|
+ | ~trapt-apt-full-upgrade~ | apt full-upgrade |
+ | trapt-apt-install      | apt install      |
+ | trapt-apt-list         | apt list         |
+ | ~trapt-apt-purge~        | apt purge        |
+ | trapt-apt-remove       | apt ~remove~       |
+ | trapt-apt-update       | apt update       |
+
+** Manage Packages with APT List Mode
+
+Running trapt-apt-list will direct output to a tablist buffer. From this buffer, packages can be marked usinng the ~m~ key. Once packages can be marked, users can execute APT operations on the selected packages with ~M-x trapt~ or by calling the functions ~M-x trapt-apt-*~.
+
+** Using Org Mode
+
+
+
+* Future Plans
+
+- [ ] Add asynchronous processing to prevent Emacs from locking when using trapt-apt-list to pull all packages from all repositories.
