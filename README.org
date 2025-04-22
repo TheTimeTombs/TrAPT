@@ -28,11 +28,11 @@ You can also run the following commands directly. Calling these functions will p
 
  | Emacs Function         | APT Command      |
  |------------------------+------------------|
- | ~trapt-apt-full-upgrade~ | apt full-upgrade |
+ | trapt-apt-full-upgrade | apt full-upgrade |
  | trapt-apt-install      | apt install      |
  | trapt-apt-list         | apt list         |
- | ~trapt-apt-purge~        | apt purge        |
- | trapt-apt-remove       | apt ~remove~       |
+ | trapt-apt-purge        | apt purge        |
+ | trapt-apt-remove       | apt remove      |
  | trapt-apt-update       | apt update       |
 
 ** Manage Packages with APT List Mode
