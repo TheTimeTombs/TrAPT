@@ -2,9 +2,9 @@
 
 ;; Author: Thomas Freeman
 ;; Maintainer: Thomas Freeman
-;; Version: 2025-04-20
+;; Version: 20250504
 ;; Package-Requires: (org)
-;; Homepage: tbd
+;; Homepage: https://github.com/tfree87/trapt
 ;; Keywords: APT org transient
 
 
@@ -26,7 +26,7 @@
 
 ;;; Commentary:
 
-;; This package is part of `trapt'. This package adds functions that 
+;; This package is part of `trapt'. This package adds functions that
 ;; add the ability to export data from `trapt-list-mode' to an Org
 ;; mode buffer. The Org export has each packages as a heading. Using
 ;; the custom TODO headings defined in `trapt-org-todo-keywords'
@@ -37,10 +37,16 @@
 
 
 (require 'org)
+(require 'tablist)
+(require 'trapt)
+(require 'trapt-utils)
 
-(defgroup trapt-org nil "")
+(defgroup TrAPT-Org nil "Customization options for TrAPT-Org."
+  :group 'TrAPT
+  :prefix "trapt-org-")
 
-(defcustom trapt-org-todo-keywords '(("install" . "INSTALL")
+(defcustom trapt-org-todo-keywords '(("full-upgrade" . "FULL-UPGRADE")
+                                     ("install" . "INSTALL")
                                      ("reinstall" . "REINSTALL")
                                      ("remove" . "REMOVE")
                                      ("purge" . "PURGE")
@@ -50,12 +56,18 @@
   :type 'alist)
 
 (defcustom trapt-org-done-keyword "DONE"
-  "Custom Org mode TODO keyword for terminal state.")
+  "Custom Org mode TODO keyword for terminal state."
+  :type 'string)
 
-(defvar trapt-org-export-format "* %s %s \n:PROPERTIES:\n:Version: %s\n:Architecture: %s\n:END:\n")
+(defvar trapt-org-export-format
+  "* %s %s \n:PROPERTIES:\n:Version: %s\n:Architecture: %s\n:END:\n"
+  "The format of the Org properties drawer.
+This is used when exporting results with `trapt-org--export'")
 
 (defun trapt-org--status-to-tags (status)
-  "Converts entries from the status column of the APT list buffer or Org mode tags."
+  "Convert status column of the APT list buffer to Org mode tag.
+
+STATUS is a string from the status column of APT list."
   (let* ((tag-string status)
          (tag-string (string-replace "[" ":" tag-string))
          (tag-string (string-replace "]" ":" tag-string))
@@ -63,70 +75,78 @@
     tag-string))
 
 (defun trapt-org--get-heading-name ()
-  "Returns the heading from the current Org heading."
+  "Return the heading from the current Org heading."
   (nth 4 (org-heading-components)))
 
 (defun trapt-org--export (entries)
-  ""
-  (trapt-utils--check-mode trapt-list-mode-name
+  "Exports entries from APT List buffer to Org.
+
+ENTRIES is a list of items from a tablist buffer."
+  (trapt-utils--check-mode trapt-list--mode-name
                            (progn
                              (switch-to-buffer (generate-new-buffer "APT List Org Export"))
                              (org-mode)
                              (org-export-insert-default-template 'default)
                              (insert (concat (trapt-org--generate-custom-todos) "\n\n"))
-                             (dolist (item entries)
-                               (insert (format trapt-org-export-format
-                                               (aref (cadr item) 0)
-                                               (trapt-org--status-to-tags (aref (cadr item) 4))
-                                               (aref (cadr item) 2)
-                                               (aref (cadr item) 3)))))))
+                             (cl-loop  for item in entries
+                                       do (insert (format trapt-org-export-format
+                                                          (aref (cadr item) 0)
+                                                          (trapt-org--status-to-tags (aref (cadr item) 4))
+                                                          (aref (cadr item) 2)
+                                                          (aref (cadr item) 3))))
+                             ;; Restart org mode to load TODO states
+                             (org-mode-restart))))
 
 (defun trapt-org-export-marked ()
-  "Export all marked items from the '*APT List*' buffer to a new Org mode buffer.
-The format of the Org entries the output format for the org mode is determined by
-the variable 'trapt-list-org-export-format'."
+  "Export all marked items from the APT List buffer to Org mode.
+The format of the Org entries the output format for the org mode is determined
+by the variable `trapt-list-org-export-format'."
   (interactive)
-  (trapt-utils--check-mode trapt-list-mode-name
-                           (trapt-org--export (tablist-get-marked-items))))
+  (trapt-org--export (tablist-get-marked-items)))
 
 (defun trapt-org-export-all ()
-  "Export all items from the '*APT List*' buffer to a new Org mode buffer.
-The format of the Org entries the output format for the org mode is determined by
-the variable 'trapt-list-org-export-format'."
+  "Export all items from the APT List buffer to Org mode.
+The format of the Org entries the output format for the org mode is determined
+by the variable `trapt-list-org-export-format'."
   (interactive)
-  (trapt-utils--check-mode trapt-list-mode-name
-                           (trapt-org--export tabulated-list-entries)))
+  (trapt-org--export tabulated-list-entries))
 
 (defun trapt-org--generate-custom-todos ()
-  "Generates the custom TODO header for trapt exported Org mode ciles."
+  "Generate custom TODO header for trapt exported Org mode ciles."
   (mapconcat #'identity `("#+TODO:"
                           ,(mapconcat #'cdr
-                                      trapt-org-todo-keywords           
+                                      trapt-org-todo-keywords
                                       " ")
                           "|"
                           ,trapt-org-done-keyword)
              " "))
 
-;;;###autoload 
-(defun trapt-org-execute (&opt operation)
-  "Runs an APT command from an active Org mode buffer using package names from headlines marked with TODO keywords matching those in `trapt-org-todo-keywords'.
+;;;###autoload
+(defun trapt-org-execute (&optional operation)
+  "Run an APT command from an active Org mode buffer.
 
-If no OPERATION is given, the user will be prompted for an operation. OPERATION must be a value from `trapt-org-todo-keywords'.
+Package names in the Org buffer should be headlines marked with TODO keywords
+matching those in `trapt-org-todo-keywords'.
 
-When an operation is chosen, a that APT operation with be executed on the package names in the current org mode buffer marked with the todo keyword from `trapt-org-todo-keywords' that corresponds to the OPERATION value."
+If no OPERATION is given, the user will be prompted for an operation. OPERATION
+must be a value from `trapt-org-todo-keywords'.
+
+When an operation is chosen, a that APT operation with be executed on the
+package names in the current org mode buffer marked with the todo keyword from
+`trapt-org-todo-keywords' that corresponds to the OPERATION value."
   (interactive)
-  (let* ((operation (or operation
-                        (completing-read "APT operation: "
-                                         (mapcar #'car
-                                                 trapt-org-todo-keywords)))
-                    (tag (cdr (assoc operation trapt-org-todo-keywords)))
-                    (package-string  (trapt-utils--list-to-string
-                                      (org-map-entries
-                                       (lambda ()
-                                         (nth 4
-                                              (org-heading-components)))
-                                       (format "TODO=\"%s\"" tag))))))
-    (trapt--execute operation package-string)))
+  (let* ((oper (or operation
+                   (completing-read "APT operation: "
+                                    (mapcar #'car
+                                            trapt-org-todo-keywords))))
+         (tag (cdr (assoc oper trapt-org-todo-keywords)))
+         (package-string (trapt-utils--list-to-string
+                          (org-map-entries
+                           (lambda ()
+                             (nth 4
+                                  (org-heading-components)))
+                           (format "TODO=\"%s\"" tag)))))
+    (trapt--execute oper package-string "")))
 
 (provide 'trapt-org)
 

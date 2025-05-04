@@ -2,9 +2,9 @@
 
 ;; Author: Thomas Freeman
 ;; Maintainer: Thomas Freeman
-;; Version: 2025-04-20
+;; Version: 20250504
 ;; Package-Requires: (dependencies)
-;; Homepage: tbd
+;; Homepage: https://github.com/tfree87/trapt
 ;; Keywords: APT
 
 
@@ -26,20 +26,20 @@
 
 ;;; Commentary:
 
-;; This file contains helper functions for the trapt pacakge.
+;; This file contains helper functions for the TrAPT package.
 
 ;;; Code:
 
-
-(require 'tablist)
-
 (defmacro trapt-utils--check-mode (mode &body)
+  "BODY is a Lisp form that will execute if the current mode is MODE.
+If not, an error will be thrown."
   `(if (string= mode-name ,mode)
        ,&body
-     (error (format "Function can only be run in %s mode." ,mode))))
+     (error (format "Error: Function must be called from %s mode." ,mode))))
 
 (defun trapt-utils--list-or-string (value)
-  "Returns VALUE if VALUE is a string. If VALUE is a list, returns a space-separated string using the items in list VALUE by calling 'trapt-utils--list-to-string'. If VALUE is nil, returns an empty string."
+  "Return VALUE if VALUE is a string.
+If VALUE is a list, return a space-separated string."
   (cond ((not value)
          "")
         ((stringp value)
@@ -47,37 +47,54 @@
         ((listp value)
          (trapt-utils--list-to-string value))))
 
+(defun trapt-utils--get-tablist-item (idx)
+  "Get the item from index IDX for the current item at point in a tablist buffer."
+  (let ((element (tabulated-list-get-entry)))
+    (aref element idx)))
+
 (defun trapt-utils--build-command-string (operation &optional packages arguments)
+  "Concatenates the elements of an APT command string.
+
+OPERATION is a string containing a command for the APT package tool.
+
+PACKAGES is list or space-separated string of packages to upgrade.
+If no PACKAGES are passed, then the user will be prompted for a
+space-separated string containing the list of packages to upgrade.
+
+ARGUMENTS is a list or space-separated string of arguments to the apt command.
+If no ARGUMENTS is passed, then the user will be prompted for a
+space-separated string containing the list of arguments to pass."
   (trapt-utils--list-to-string (list "sudo"
                                      "apt"
                                      operation
-                                     packages
+                                     (trapt-utils--list-or-string packages)
                                      (trapt-utils--list-or-string arguments))))
 
-(defun trapt-utils--run-command (command-string)
-  "Run the COMMAND-STRING with 'async-shell-command'."
-  (message (concat "Running: " command-string))
-  (async-shell-command command-string))
+(defun trapt-utils--vterm-exec (command)
+  "Insert the string COMMAND in a vterm buffer and execute it."
+  (interactive)
+  (require 'vterm)
+  (vterm-other-window)
+  (vterm-clear)
+  (vterm-send-string command)
+  (vterm-send-return))
+
+(defun trapt-utils--eshell-exec (command)
+  "Run COMMAND in eshell."
+  (eshell-command command))
 
 (defun trapt-utils--list-to-string (lst)
   "Take a list of arguments LST and return them as a string separated by space."
   (cond ((not lst) nil)
         ((listp lst) (mapconcat #'identity lst " "))
-        (t (error "Error: Must be a list."))))
+        (t (error "Error: Must be a list!"))))
 
-(defun trapt-utils--shell-command-to-string (command-string)
-  (let ((command-output (shell-command-to-string command-string)))
-    (message (concat "Running: " command-string))
+(defun trapt-utils--shell-command-to-string (command)
+  "Run shell COMMAND in a shell and return the output as string."
+  (let ((command-output (shell-command-to-string command)))
+    (message (concat "Running: " command))
     command-output))
-
-(defmacro trapt-utils--refresh-entries (promise)
-  "Update the current buffer with the results of PROMISE."
-  `(let ((buffer (current-buffer))
-         (entries (aio-await ,promise)))
-     (with-current-buffer buffer
-       (setq tabulated-list-entries entries)
-       (tabulated-list-print t))))
 
 (provide 'trapt-utils)
 
-;;; trapt-utils.el eds here.
+;;; trapt-utils.el ends here

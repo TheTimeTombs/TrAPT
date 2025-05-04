@@ -1,20 +1,57 @@
-* TRAPT
+#+options: ':nil *:t -:t ::t <:t H:3 \n:nil ^:t arch:headline author:t
+#+options: broken-links:nil c:nil creator:nil d:(not "LOGBOOK") date:t e:t
+#+options: email:nil expand-links:t f:t inline:t num:t p:nil pri:nil prop:nil
+#+options: stat:t tags:t tasks:t tex:t timestamp:t title:t toc:nil todo:t |:t
+#+title: TrAPT
+#+date: <2025-04-23 Wed>
+#+author: Thomas Freeman
+#+language: en
+#+creator: Emacs 30.0.92 (Org mode 9.7.25)
+ 
 
-Use TRansient menus to interact with the APT package manager.
+[[./docs/img/demo.gif]]
+
+* Overview
+
+Use transient menus to interact with the APT package manager.
+
+* Why TrAPT?
+
+TrAPT was designed to fit some niche needs:
+
+1. To make it simpler to call APT commands without typos (for instance, always accidentally typing isntall rather than install)
+2. To be able to view ~apt list~ output in a sortable, serachable, and markable list
+3. To make it easy to export the output 
 
 * Features
 
-+ Use a tranisent menu to inteact with the following APT commands or directly through an interactive Emacs function:
++ Use a tranisent menu to inteact with the following APT commands or directly through and interative function call:
   - install
   - remove
   - purge
   - autoremove
   - list
-+ Addionally, install and remove programs with APT from an Org mode buffer.
++ Install and remove programs with APT using Org mode
++ Use ~trapt-exec-find~ in your Emacs configuration to create a report or required executables that your configuration depends on
++ Supports sending commands to eshell or vterm
 
 * Installation
 
-Clone this repo into your Emacs load path and 
+Clone this repo into your Emacs load path and load with the following :
+
+#+begin_src emacs-lisp
+  (require 'trapt)
+#+end_src
+
+Alternatively, using use-package you can put this package outside of your load path and load it with:
+
+#+begin_src emacs-lisp
+  (use-package trapt
+    :load-path "/path/to/trapt"
+    :init
+    (require 'trapt-exec-find) ; Load early if you wish to check your config
+    :commands (trapt trapt-exec-find-report)
+#+end_src
 
 * Usage
 
@@ -32,7 +69,7 @@ You can also run the following commands directly. Calling these functions will p
  | trapt-apt-install      | apt install      |
  | trapt-apt-list         | apt list         |
  | trapt-apt-purge        | apt purge        |
- | trapt-apt-remove       | apt remove      |
+ | trapt-apt-remove       | apt remove       |
  | trapt-apt-update       | apt update       |
 
 ** Manage Packages with APT List Mode
@@ -41,8 +78,35 @@ Running trapt-apt-list will direct output to a tablist buffer. From this buffer,
 
 ** Using Org Mode
 
+Headings in Org mode that are simply package names can be marked with customized TODO keywords corresponding to the APT commands. The defaults are below:
 
+ | APT Command  | Default Org TODO Keyword |
+ |--------------+--------------------------|
+ | full-upgrade | FULL-UPGRADE             |
+ | install      | INSTALL                  |
+ | purge        | PURGE                    |
+ | reinstall    | REINSTALL                |
+ | remove       | REMOVE                   |
+ | upgrade      | UPGRADE                  |
+
+ An example can be seen in the animation below.
+
+[[./docs/img/trapt-org-demo.gif]]
+
+** ~trapt-exec-find~
+
+In your Emacs configuration, wrap any strings contating shell commands like the example below:
+
+#+begin_src emacs-lisp
+  (setq inferior-lisp-program (trapt-exec-find
+                               "sbcl --noinform --no-linedit"))
+#+end_src
+
+Then, after Emacs has loaded, call a list of all required executables on you system and their path using ~trapt-exec-find-report~. Any executables not found on your system will report "not found".
 
 * Future Plans
 
-- [ ] Add asynchronous processing to prevent Emacs from locking when using trapt-apt-list to pull all packages from all repositories.
++ [ ] Speed up pulls when ~apt list~ is called with no arguments and pulls the entire list of packages from all repositories.
+  - Us asynchronous processing to prevent Emacs from locking up
+  - Consider using faster text processing tools such as ~sed~ or use better Lisp data types for faster processing
++ Consider supporting other popular pacakge managers.

@@ -4,7 +4,7 @@
 ;; Maintainer: Thomas Freeman
 ;; Version: 20240420
 ;; Package-Requires: (transient)
-;; Homepage: tbd
+;; Homepage: https://github.com/tfree87/trapt
 ;; Keywords: APT transient
 
 
@@ -35,55 +35,52 @@
 (require 'trapt-utils)
 (require 'trapt-list)
 
-(defmacro trapt-transient--apt (function)
+(defun trapt-transient--apt (function)
   "Executes FUNCTION passing arguments from 'transient-current-command'."
-  (let ((arguments (gensym "trapt-")))
-    `(let ((arguments
-            (or (transient-args transient-current-command)
-                "")))
-       (,function nil arguments))))
+  (let ((arguments (transient-args transient-current-command)))
+    (eval `(,function nil ,@arguments))))
 
 (defun trapt-transient--apt-list ()
   "Wrapper function for 'trapt-apt-list'. Passes arguments from
   'transient-current-command' to 'trapt-apt-list'."
   (interactive)
-  (trapt-transient--apt trapt-apt-list))
+  (trapt-transient--apt #'trapt-apt-list))
 
 (defun trapt-transient--apt-purge ()
   "Wrapper function for 'trapt-apt-purge'. Passes arguments from
   'transient-current-command' to 'trapt-apt-purge'."
   (interactive)
-  (trapt-transient--apt trapt-apt-purge))
+  (trapt-transient--apt #'trapt-apt-purge))
 
 (defun trapt-transient--apt-autoremove ()
   "Wrapper function for 'trapt-apt-autoremove'. Passes arguments from
   'transient-current-command' to 'trapt-apt-autoremove'."
   (interactive)
-  (trapt-transient--apt trapt-apt-autoremove))
+  (trapt-transient--apt #'trapt-apt-autoremove))
 
 (defun trapt-transient--apt-remove ()
   "Wrapper function for 'trapt-apt-remove'. Passes arguments from
   'transient-current-command' to 'trapt-apt-remove'."
   (interactive)
-  (trapt-transient--apt trapt-apt-remove))
+  (trapt-transient--apt #'trapt-apt-remove))
 
 (defun trapt-transient--apt-install ()
   "Wrapper function for 'trapt-apt-install'. Passes arguments from
   'transient-current-command' to 'trapt-apt-install'."
   (interactive)
-  (trapt-transient--apt trapt-apt-install))
+  (trapt-transient--apt #'trapt-apt-install))
 
 (defun trapt-transient--apt-upgrade ()
   "Wrapper function for 'trapt-apt-upgrade'. Passes arguments from
   'transient-current-command' to 'trapt-apt-upgrade'."
   (interactive)
-  (trapt-transient--apt trapt-apt-upgrade))
+  (trapt-transient--apt #'trapt-apt-upgrade))
 
 (defun trapt-transient--apt-full-upgrade ()
   "Wrapper function for 'trapt-apt-full-upgrade'. Passes arguments from
   'transient-current-command' to 'trapt-apt-full-upgrade'."
   (interactive)
-  (trapt-transient--apt trapt-apt-full-upgrade))
+  (trapt-transient--apt #'trapt-apt-full-upgrade))
 
 (transient-define-prefix trapt-transient--apt-upgrade-transient ()
   "Transient menu for apt list command"
