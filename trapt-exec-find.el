@@ -3,7 +3,7 @@
 ;; Author: Thomas Freeman
 ;; Maintainer: Thomas Freeman
 ;; Version: 20250504
-;; Package-Requires: 
+;; Package-Requires:
 ;; Homepage: https://github.com/tfree87/trapt
 ;; Keywords: trapt apt
 
@@ -37,14 +37,37 @@
 ;;; Code:
 
 
-(require 'trapt)
-(require 'trapt-list)
+(require 'trapt-core)
 (require 'trapt-utils)
 
 (defgroup TrAPT-Exec-Find nil
-  "Customization options for the `trapt-exec-find' package."
-  :group 'TrAPT
-  :prefix "trapt-exec-find-")
+  "Customization options for TrAPT-Exec-Find."
+  :group 'TrAPT)
+
+(defvar trapt-exec-find--columns '("Name"
+                                   "Path"
+                                   "Version"
+                                   "Package Manager"
+                                   "Calling File")
+  "A list of column names for `trapt-exec-find-mode'.")
+
+(defcustom trapt-exec-find-default-sort-key '("Name" . nil)
+  "Sort key for results returned from `trapt-exec-find-report'.
+
+ This should be a cons cell (NAME . FLIP) where NAME is a string matching one of
+the column names from `trapt-exec-find--columns' and FLIP is a boolean to
+specify the sort order."
+  :group 'trapt-exec-find
+  :type '(cons (string :tag "Column Name"
+                       :validate (lambda (widget)
+                                   (unless (member
+                                            (widget-value widget)
+                                            trapt-exec-find--columns)
+                                     (widget-put widget
+                                                 (error "Default Sort Key must match a column name"))
+                                     widget)))
+               (choice (const :tag "Ascending" nil)
+                       (const :tag "Descending" t))))
 
 (defvar trapt-exec-find-mode-map
   (let ((map (make-sparse-keymap)))
@@ -69,7 +92,7 @@ manager.")
   "The name of the buffer for `trapt-exec-find-report'.")
 
 (defun trapt-exec-find--progpath (program)
-  "Return the program path for PROGRAM or returns \"not found\"."
+  "Return the program path for PROGRAM or return `not found'."
   (let ((path (executable-find program)))
     (if path
         (propertize path 'font-lock-face 'font-lock-string-face)
@@ -131,14 +154,23 @@ manage this package. Currently, this if for reference purposes only."
         (push `(,program ,load-file-name ,version ,pkg-mgr) trapt-exec-find--list))))
   command-string)
 
+;; Clear TrAPT--marked-packages when list buffer closed
+(add-hook 'kill-buffer-hook
+          (lambda ()
+            (when (string-equal (buffer-name)
+                                trapt-exec-find--report-buffer-name)
+              (setf trapt--marked-packages nil))))
+
 ;;;###autoload
 (defun trapt-exec-find-report ()
-  "Generates a report of all packages identified with `trapt-exec-find'."
+  "Generate a report of all packages identified with `trapt-exec-find'."
   (interactive)
+  (unless (member trapt-exec-find--report-buffer-name trapt--buffer-names)
+    (push trapt-exec-find--report-buffer-name trapt--buffer-names))
   (with-current-buffer
       (get-buffer-create trapt-exec-find--report-buffer-name)
     (trapt-exec-find-mode)
-    (setf tabulated-list-sort-key trapt-list-default-sort-key)
+    (setf tabulated-list-sort-key trapt-exec-find-default-sort-key)
     (setf tabulated-list-format [("Name" 15 t)
                                  ("Path" 30 t)
                                  ("Version" 15 t)

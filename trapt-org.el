@@ -38,8 +38,8 @@
 
 (require 'org)
 (require 'tablist)
-(require 'trapt)
-(require 'trapt-utils)
+(require 'trapt-core)
+(require 'trapt-list)
 
 (defgroup TrAPT-Org nil "Customization options for TrAPT-Org."
   :group 'TrAPT
@@ -52,7 +52,7 @@
                                      ("purge" . "PURGE")
                                      ("upgrade" . "UPGRADE"))
   "Custom Org mode TODO keywords ."
-  :group 'trapt-org
+  :group 'TrAPT-Org
   :type 'alist)
 
 (defcustom trapt-org-done-keyword "DONE"

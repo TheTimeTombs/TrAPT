@@ -30,6 +30,8 @@
 
 ;;; Code:
 
+(require 'tablist)
+
 (defmacro trapt-utils--check-mode (mode &body)
   "BODY is a Lisp form that will execute if the current mode is MODE.
 If not, an error will be thrown."

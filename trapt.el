@@ -1,4 +1,4 @@
-;;; trapt.el --- Control APT from Emacs -*- lexical-binding: t -*-
+;;; trapt.el --- Emacs interface to APT -*- lexical-binding: t -*-
 
 ;; Author: Thomas Freeman
 ;; Maintainer: Thomas Freeman
@@ -29,177 +29,21 @@
 ;; Trapt is a package that allows users to be able to interact with th
 ;; advanced pacakge tool APT in Emacs using interactive functions,
 ;; transient menus, and Org mode. It also provides APT List mode
-;; in which the ouput of 'apt list' is displayed in a tabulated
+;; in which the output of 'apt list' is displayed in a tabulated
 ;; list buffer.
 
 ;;; Code:
 
 
-(require 'trapt-utils)
+(require 'trapt-core)
 (require 'trapt-list)
 (require 'trapt-transient)
+(require 'trapt-org)
+(require 'trapt-exec-find)
 
 (defgroup TrAPT nil "Customization options for TrAPT."
   :group 'Processes
   :prefix "trapt-")
-
-(defcustom trapt-shell nil
-  "The shell to run TrAPT commands."
-  :options '("default" "eshell" "vterm")
-  :group 'TrAPT
-  :type 'string)
-
-(defun trapt--run-command (command)
-  "Run COMMAND with `async-shell-command'."
-  (message (format "Running: %s" command))
-  (cond ((string= trapt-shell "vterm")
-         (trapt-utils--vterm-exec command))
-        (t (async-shell-command command))))
-
-(cl-defun trapt--execute (operation &key packages arglist (prompt t))
-  "Run an APT command from an inferior shell.
-
-OPERATION must be a string and can be any command understood by the APT
-package manager. Including full-upgrade, install, reinstall, purge, remove,
-update, and upgrade.
-
-PACKAGES is list or space-separated string of packages to upgrade.
-If no PACKAGES are passed, then the user will be prompted for a
-space-separated string containing the list of packages to upgrade.
-
-ARGLIST is a list or space-separated string of arguments to the apt command.
-If no ARGLIST is passed, then the user will be prompted for a
-space-separated string containing the list of arguments to pass.
-
-If PROMPT is nil, then the user will not be prompted for packages and arguments
-if none are given."
-  (when (get-buffer "*APT List*")
-    (trapt-list--update-package-names))
-  (let* ((packages (if prompt
-                       (or packages
-                           (trapt-utils--list-to-string
-                            trapt-list--marked-packages)
-                           (read-string
-                            (format
-                             "Enter packages to %s (space separarted -- enter for all): "
-                             operation)))
-                     ""))
-         (arguments (if prompt
-                        (or arglist
-                            (read-string (format
-                                          "Enter apt %s arguments (space separated -- enter for none): "
-                                          operation)))
-                      ""))
-         (command (trapt-utils--build-command-string
-                   operation
-                   packages
-                   arguments)))
-    (if (string= operation "list")
-        ;; TODO run this asynchronously or speed up for large lists
-        (trapt-utils--shell-command-to-string command)
-      (trapt--run-command command))))
-
-;;;###autoload
-(defun trapt-apt-list (&optional packages arglist)
-  "Call 'trapt-list--apt-list-to-tablist' and create a tablist buffer.
-The buffer contains the result of 'apt list' run from in an inferior shell.
-Arguments can be passed to 'apt list' as the list ARGLIST or by
-the transient menu 'trapt-transient--apt-list-transient'.
-
-PACKAGES is a list or space-separated string of packages to upgrade.
-If no PACKAGES are passed, then the user will be prompted for a
-space-separated string containing the list of packages to upgrade.
-
-ARGLIST is a list or space-separated string of arguments to the apt command.
-If no ARGLIST is passed, then the user will be prompted for a
-space-separated string containing the list of arguments to pass."
-  (interactive)
-  (let* ((apt-output (trapt--execute "list" :arglist arglist)))
-    (trapt-list--apt-list-to-tablist "*APT List*" apt-output)))
-
-;;;###autoload
-(defun trapt-apt-install (&optional packages arglist)
-  "Run apt install. This is a wrapper function for `trapt--execute'.
-
-PACKAGES is space-separated string of packages to upgrade.
-If no PACKAGES are passed, then the user will be prompted for a
-space-separated string containing the list of packages to upgrade.
-
-ARGLIST is a space-separated string of arguments to the apt command.
-If no ARGLIST is passed, then the user will be prompted for a
-space-separated string containing the list of arguments to pass."
-  (interactive)
-  (trapt--execute "install" :packages packages :arglist arglist))
-
-;;;###autoload
-(defun trapt-apt-remove (&optional packages arglist)
-  "Run apt upgrade. This is a wrapper function for `trapt--execute'.
-
-PACKAGES is space-separated string of packages to upgrade.
-If no PACKAGES are passed, then the user will be prompted for a
-space-separated string containing the list of packages to upgrade.
-
-ARGLIST is a space-separated string of arguments to the apt command.
-If no ARGLIST is passed, then the user will be prompted for a
-space-separated string containing the list of arguments to pass."
-  (interactive)
-  (trapt--execute "remove" :packages packages :arglist arglist))
-
-;;;###autoload
-(defun trapt-apt-upgrade (&optional arglist)
-  "Run apt upgrade. This is a wrapper function for `trapt--execute'.
-
-ARGLIST is a space-separated string of arguments to the apt command.
-If no ARGLIST is passed, then the user will be prompted for a
-space-separated string containing the list of arguments to pass."
-  (interactive)
-  (trapt--execute "upgrade" :prompt nil :arlist arglist))
-
-;;;###autoload
-(defun trapt-apt-purge (&optional packages arglist)
-  "Run apt purge. This is a wrapper function for `trapt--execute'.
-
-PACKAGES is space-separated string of packages to upgrade.
-If no PACKAGES are passed, then the user will be prompted for a
-space-separated string containing the list of packages to upgrade.
-
-ARGLIST is a space-separated string of arguments to the apt command.
-If no ARGLIST is passed, then the user will be prompted for a
-space-separated string containing the list of arguments to pass."
-  (interactive)
-  (trapt--execute "purge" :packages packages :arglist arglist))
-
-;;;###autoload
-(defun trapt-apt-autoremove (&optional arglist)
-  "Run apt autoremove.This is a wrapper function for `trapt--execute'.
-
-ARGLIST is a space-separated string of arguments to the apt command.
-If no ARGLIST is passed, then the user will be prompted for a
-space-separated string containing the list of arguments to pass."
-  (interactive)
-  (trapt--execute "autoremove" :arglist arglist))
-
-;;;###autoload
-(defun trapt-apt-full-upgrade (&optional arglist)
-  "Run apt full-upgrade. This is a wrapper function for `trapt--execute'.
-
-ARGLIST is a space-separated string of arguments to the apt command.
-If no ARGLIST is passed, then the user will be prompted for a
-space-separated string containing the list of arguments to pass."
-  (interactive)
-  (trapt--execute "full-upgrade" :prompt nil :arglist arglist))
-
-;;;###autoload
-(defun trapt-apt-autoclean ()
-  "Run apt autoclean.  This is a wrapper function for `trapt--execute'."
-  (interactive)
-  (trapt--execute "autoclean" :prompt nil))
-
-;;;###autoload
-(defun trapt-apt-update ()
-  "Run apt update. This is a wrapper function for `trapt--execute'."
-  (interactive)
-  (trapt--execute "update" :prompt nil))
 
 (provide 'trapt)
 

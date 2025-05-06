@@ -26,41 +26,19 @@
 
 ;;; Commentary:
 
-;; This package is part of of trapt. This package provides features to
+;; This package is part of TrAPT. This package provides features to
 ;; pipe the output of APT list to a tabulated list buffer. Packages can
 ;; be marked and then APT commands can be executed on the selection.
 
 ;;; Code:
 
-
-(require 'async)
 (require 'tablist)
+(require 'trapt-core)
 
 (defgroup TrAPT-List nil
-  "Trapt preferences for working with APT list"
+  "TrAPT preferences for working with APT list."
   :group 'TrAPT
-  :prefix "trapt-list")
-
-(defvar trapt-list-mode-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map "i" #'trapt-apt-install)
-    (define-key map "I" #'trapt-apt-reinstall)
-    (define-key map "R" #'trapt-apt-remove)
-    (define-key map "P" #'trapt-apt-purge)
-    map)
-  "Keymap for `trapt-list-mode'.")
-
-(defvar trapt-list--columns '("Name" "Version" "Architecture" "Status")
-  "A list of column name for `trapt-list-mode'.")
-
-(defvar trapt-list--marked-packages nil
-  "The list of packges marked in the current APT List Buffer.")
-
-(defvar trapt-list--buffer-name "*APT List*"
-  "The name of the buffer created for APT List Mode")
-
-(defvar trapt-list--mode-name "TrAPT List"
-  "The name of `trapt-list-mode' buffer.")
+  :prefix "trapt-list-")
 
 (defcustom trapt-list-default-sort-key '("Name" . nil)
   "Sort key for for sorting results returned from apt list.
@@ -80,38 +58,46 @@ the sort order."
                (choice (const :tag "Ascending" nil)
                        (const :tag "Descending" t))))
 
-;; Clear trapt-list--marked-packages when list buffer closed
+(defvar trapt-list-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map "i" #'trapt-apt-install)
+    (define-key map "I" #'trapt-apt-reinstall)
+    (define-key map "R" #'trapt-apt-remove)
+    (define-key map "P" #'trapt-apt-purge)
+    map)
+  "Keymap for `trapt-list-mode'.")
+
+(defvar trapt-list--columns '("Name" "Version" "Architecture" "Status")
+  "A list of column names for `trapt-list-mode'.")
+
+(defvar trapt-list--marked-packages nil
+  "The list of packges marked in the current APT List Buffer.")
+
+(defvar trapt-list--buffer-name "*APT List*"
+  "The name of the buffer created for APT List Mode.")
+
+(defvar trapt-list--mode-name "TrAPT List"
+  "The name of `trapt-list-mode' buffer.")
+
+;; Clear TrAPT--marked-packages when list buffer closed
 (add-hook 'kill-buffer-hook
           (lambda ()
             (when (string-equal (buffer-name) trapt-list--buffer-name)
-              (setf trapt-list--marked-packages nil))))
-
-(defun trapt-list--update-package-names ()
-  "Updates variable'trapt-lsit-marked-packages' with the currently marked
-packages from the *APT List* buffer."
-  (when (get-buffer trapt-list--buffer-name)
-    (progn (switch-to-buffer trapt-list--buffer-name)
-           (when (caar (tablist-get-marked-items))
-             (let ((result-list
-                    (cl-loop for item in (tablist-get-marked-items)
-                             collect (aref (cdr item) 0))))
-               (setf trapt-list--marked-packages (reverse result-list)))))))
+              (setf trapt--marked-packages nil))))
 
 (defun trapt-list--create-tablist-entry-list (apt-list-output)
-  "Take a list from APT-LIST-ITEMS and add them to `tabulated-list-entries'."
+  "Take a list from APT-LIST-OUTPUT and add them to `tabulated-list-entries'."
   (setf tabulated-list-entries ())
-  (let ((apt-list-lines (trapt-list--create-tablist-entries apt-list-output))
-        (entries '())
-        (counter 1))
-    (dolist (element apt-list-lines)
-      (add-to-list 'entries `(,counter [,@element]))
-      (setf counter (+ 1 counter)))
+  (let* ((apt-list-lines (trapt-list--process-lines apt-list-output))
+         (counter 0)
+         (entries
+          (cl-loop for element in apt-list-lines
+                   do (setf counter (+ 1 counter))
+                   collect `(,counter [,@element]))))
     (setf tabulated-list-entries entries)))
 
 (defun trapt-list--process-lines (apt-list-output)
-  "Splits the output of APT-LIST-OUTPUT.
- by space and \ delimiters and returns
-  the list APT-LIST-ENTRIES."
+  "Splits the output of APT-LIST-OUTPUT."
   (let ((apt-list-entries (mapcar (lambda (line) (split-string line "[ /]"))
                                   (trapt-list--apt-list-split-lines apt-list-output))))
     apt-list-entries))
@@ -139,6 +125,26 @@ The tablist buffer is populated with entries from APT-LIST-OUTPUT."
     (trapt-list--create-tablist-entry-list apt-list-output)
     (revert-buffer))
   (switch-to-buffer buffer-name))
+
+;;;###autoload
+(defun trapt-apt-list (&optional packages arglist)
+  "Call `trapt-list--apt-list-to-tablist' and create a tablist buffer.
+The buffer contains the result of `apt list' run from in an inferior shell.
+Arguments can be passed to `apt list' as the list ARGLIST or by
+the transient menu `trapt-transient--apt-list-transient'.
+
+PACKAGES is a list or space-separated string of packages to upgrade.
+If no PACKAGES are passed, then the user will be prompted for a
+space-separated string containing the list of packages to upgrade.
+
+ARGLIST is a list or space-separated string of arguments to the apt command.
+If no ARGLIST is passed, then the user will be prompted for a
+space-separated string containing the list of arguments to pass."
+  (interactive)
+  (let* ((apt-output (trapt--execute "list" :arglist arglist)))
+    (unless (member trapt-list--buffer-name trapt--buffer-names)
+      (push trapt-list--buffer-name trapt--buffer-names))
+    (trapt-list--apt-list-to-tablist trapt-list--buffer-name apt-output)))
 
 ;;;###autoload
 (define-derived-mode trapt-list-mode tabulated-list-mode trapt-list--mode-name
