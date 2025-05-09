@@ -2,7 +2,7 @@
 
 ;; Author: Thomas Freeman
 ;; Maintainer: Thomas Freeman
-;; Version: 20250504
+;; Version: 20250508
 ;; Package-Requires: (dependencies)
 ;; Homepage: https://github.com/tfree87/trapt
 ;; Keywords: APT

@@ -2,7 +2,7 @@
 
 ;; Author: Thomas Freeman
 ;; Maintainer: Thomas Freeman
-;; Version: 20250504
+;; Version: 20250508
 ;; Package-Requires:
 ;; Homepage: https://github.com/tfree87/trapt
 ;; Keywords: trapt apt
@@ -90,6 +90,22 @@ manager.")
 
 (defvar trapt-exec-find--report-buffer-name "*TrAPT Exec Find*"
   "The name of the buffer for `trapt-exec-find-report'.")
+
+(easy-menu-define trapt-exec-find-mode-menu trapt-exec-find-mode-map
+  "Menu when `trapt-exec-find-mode' is active."
+  `("TrAPT Exec Find"
+    ["Install selected packages" trapt-apt-install
+     :help "Install the selected packages with APT."]
+    ["Purge selected packages" trapt-apt-purge
+     :help "Purge selected packages with APT."]
+    ["Reinstall selected packages" trapt-apt-reinstall
+     :help "Reinstall selected packages with APT."]
+    ["Reinstall selected packages" trapt-apt-remove
+     :help "Remove selected packages with APT."]
+    ["Go to Executable Path" 'trapt-exec-find-goto-path
+     :help "Open the path location for the executable file at point."]
+    ["Go to trapt-exec-find Call" 'trapt-exec-find-goto-call
+     :help "Go to the Lisp file where 'trapt-exec-find' was called for the item at point."]))
 
 (defun trapt-exec-find--progpath (program)
   "Return the program path for PROGRAM or return `not found'."

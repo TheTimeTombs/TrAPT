@@ -2,9 +2,9 @@
 
 ;; Author: Thomas Freeman
 ;; Maintainer: Thomas Freeman
-;; Version: 20250504
+;; Version: 20250508
 ;; Package-Requires: (dependencies)
-;; Homepage: 
+;; Homepage: https://github.com/tfree87/trapt
 ;; Keywords: keywords
 
 
@@ -86,13 +86,13 @@ if none are given."
                        (when prompt
                          (read-string
                           (format
-                           "Enter packages to %s (space separarted -- enter for all): "
+                           "Enter packages to %s (space separated): "
                            operation)))
                        ""))
          (arguments (or arglist
                         (when prompt
                           (read-string (format
-                                        "Enter apt %s arguments (space separated -- enter for none): "
+                                        "Enter apt %s arguments (space separated): "
                                         operation)))
                         ""))
          (command (trapt-utils--build-command-string
@@ -105,7 +105,7 @@ if none are given."
       (trapt--run-command command))))
 
 ;;;###autoload
-(defun trapt-apt-install (&optional packages arglist)
+(cl-defun trapt-apt-install (&key packages arglist)
   "Run apt install. This is a wrapper function for `trapt--execute'.
 
 PACKAGES is space-separated string of packages to upgrade.
@@ -118,7 +118,7 @@ space-separated string containing the list of arguments to pass."
   (interactive)
   (trapt--execute "install" :packages packages :arglist arglist))
 
-(defun trapt-apt-reinstall (&optional packages arglist)
+(cl-defun trapt-apt-reinstall (&key packages arglist)
   "Run apt reinstall. This is a wrapper function for `trapt--execute'.
 
 PACKAGES is space-separated string of packages to upgrade.
@@ -132,7 +132,7 @@ space-separated string containing the list of arguments to pass."
   (trapt--execute "reinstall" :packages packages :arglist arglist))
 
 ;;;###autoload
-(defun trapt-apt-remove (&optional packages arglist)
+(cl-defun trapt-apt-remove (&key packages arglist)
   "Run apt upgrade. This is a wrapper function for `trapt--execute'.
 
 PACKAGES is space-separated string of packages to upgrade.
@@ -146,17 +146,17 @@ space-separated string containing the list of arguments to pass."
   (trapt--execute "remove" :packages packages :arglist arglist))
 
 ;;;###autoload
-(defun trapt-apt-upgrade (&optional arglist)
+(cl-defun trapt-apt-upgrade (&key arglist)
   "Run apt upgrade. This is a wrapper function for `trapt--execute'.
 
 ARGLIST is a space-separated string of arguments to the apt command.
 If no ARGLIST is passed, then the user will be prompted for a
 space-separated string containing the list of arguments to pass."
   (interactive)
-  (trapt--execute "upgrade" :prompt nil :arlist arglist))
+  (trapt--execute "upgrade" :prompt nil :arglist arglist))
 
 ;;;###autoload
-(defun trapt-apt-purge (&optional packages arglist)
+(cl-defun trapt-apt-purge (&key packages arglist)
   "Run apt purge. This is a wrapper function for `trapt--execute'.
 
 PACKAGES is space-separated string of packages to upgrade.
@@ -170,7 +170,7 @@ space-separated string containing the list of arguments to pass."
   (trapt--execute "purge" :packages packages :arglist arglist))
 
 ;;;###autoload
-(defun trapt-apt-autoremove (&optional arglist)
+(cl-defun trapt-apt-autoremove (&key arglist)
   "Run apt autoremove.This is a wrapper function for `trapt--execute'.
 
 ARGLIST is a space-separated string of arguments to the apt command.
@@ -180,7 +180,7 @@ space-separated string containing the list of arguments to pass."
   (trapt--execute "autoremove" :arglist arglist :prompt nil))
 
 ;;;###autoload
-(defun trapt-apt-full-upgrade (&optional arglist)
+(cl-defun trapt-apt-full-upgrade (&key arglist)
   "Run apt full-upgrade. This is a wrapper function for `trapt--execute'.
 
 ARGLIST is a space-separated string of arguments to the apt command.

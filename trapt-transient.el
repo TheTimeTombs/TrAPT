@@ -2,7 +2,7 @@
 
 ;; Author: Thomas Freeman
 ;; Maintainer: Thomas Freeman
-;; Version: 20240420
+;; Version: 20240508
 ;; Package-Requires: (transient)
 ;; Homepage: https://github.com/tfree87/trapt
 ;; Keywords: APT transient
@@ -34,11 +34,14 @@
 
 (require 'transient)
 (require 'trapt-core)
+(require 'trapt-list)
 
 (defun trapt-transient--apt (function)
   "Execute FUNCTION passing arguments from `transient-current-command'."
   (let ((arguments (transient-args transient-current-command)))
-    (eval `(,function nil ,@arguments))))
+    (if arguments
+        (eval `(,function :arglist ,@arguments))
+      (eval `(,function)))))
 
 (defun trapt-transient--apt-list ()
   "Wrapper function for `trapt-apt-list'."
@@ -114,7 +117,7 @@
    ["Run"
     ("l" "list" trapt-transient--apt-list)]])
 
-;;;###autoload (autoload 'trapt "Start a transient menu interface for APT package manager." nil t)
+;;;###autoload (autoload 'trapt "A transient menu for APT." nil t)
 (transient-define-prefix trapt ()
   "Transient menu for apt package manager."
   ["APT Package Manager"

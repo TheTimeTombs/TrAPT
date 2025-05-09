@@ -2,7 +2,7 @@
 
 ;; Author: Thomas Freeman
 ;; Maintainer: Thomas Freeman
-;; Version: 20250504
+;; Version: 20250508
 ;; Package-Requires: (org)
 ;; Homepage: https://github.com/tfree87/trapt
 ;; Keywords: APT org transient
@@ -84,16 +84,20 @@ STATUS is a string from the status column of APT list."
 ENTRIES is a list of items from a tablist buffer."
   (trapt-utils--check-mode trapt-list--mode-name
                            (progn
-                             (switch-to-buffer (generate-new-buffer "APT List Org Export"))
+                             (switch-to-buffer (generate-new-buffer
+                                                "APT List Org Export"))
                              (org-mode)
                              (org-export-insert-default-template 'default)
-                             (insert (concat (trapt-org--generate-custom-todos) "\n\n"))
+                             (insert (concat (trapt-org--generate-custom-todos)
+                                             "\n\n"))
                              (cl-loop  for item in entries
-                                       do (insert (format trapt-org-export-format
-                                                          (aref (cadr item) 0)
-                                                          (trapt-org--status-to-tags (aref (cadr item) 4))
-                                                          (aref (cadr item) 2)
-                                                          (aref (cadr item) 3))))
+                                       do (insert (format
+                                                   trapt-org-export-format
+                                                   (aref (cadr item) 0)
+                                                   (trapt-org--status-to-tags
+                                                    (aref (cadr item) 4))
+                                                   (aref (cadr item) 2)
+                                                   (aref (cadr item) 3))))
                              ;; Restart org mode to load TODO states
                              (org-mode-restart))))
 

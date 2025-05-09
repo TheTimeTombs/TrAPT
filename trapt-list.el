@@ -2,7 +2,7 @@
 
 ;; Author: Thomas Freeman
 ;; Maintainer: Thomas Freeman
-;; Version: 20250420
+;; Version: 20250508
 ;; Package-Requires: (tablist)
 ;; Homepage: https://github.com/tfree87/trapt
 ;; Keywords: APT
@@ -32,6 +32,7 @@
 
 ;;; Code:
 
+(require 'easymenu)
 (require 'tablist)
 (require 'trapt-core)
 
@@ -85,6 +86,18 @@ the sort order."
             (when (string-equal (buffer-name) trapt-list--buffer-name)
               (setf trapt--marked-packages nil))))
 
+(easy-menu-define trapt-list-mode-menu trapt-list-mode-map
+  "Menu when `trapt-list-mode' is active."
+  `("TrAPT List"
+    ["Install selected packages" trapt-apt-install
+     :help "Install the selected packages with APT."]
+    ["Purge selected packages" trapt-apt-purge
+     :help "Purge selected packages with APT."]
+    ["Reinstall selected packages" trapt-apt-reinstall
+     :help "Reinstall selected packages with APT."]
+    ["Reinstall selected packages" trapt-apt-remove
+     :help "Remove selected packages with APT."]))
+
 (defun trapt-list--create-tablist-entry-list (apt-list-output)
   "Take a list from APT-LIST-OUTPUT and add them to `tabulated-list-entries'."
   (setf tabulated-list-entries ())
@@ -127,7 +140,7 @@ The tablist buffer is populated with entries from APT-LIST-OUTPUT."
   (switch-to-buffer buffer-name))
 
 ;;;###autoload
-(defun trapt-apt-list (&optional packages arglist)
+(cl-defun trapt-apt-list (&key packages arglist)
   "Call `trapt-list--apt-list-to-tablist' and create a tablist buffer.
 The buffer contains the result of `apt list' run from in an inferior shell.
 Arguments can be passed to `apt list' as the list ARGLIST or by
@@ -141,7 +154,9 @@ ARGLIST is a list or space-separated string of arguments to the apt command.
 If no ARGLIST is passed, then the user will be prompted for a
 space-separated string containing the list of arguments to pass."
   (interactive)
-  (let* ((apt-output (trapt--execute "list" :arglist arglist)))
+  (let* ((apt-output (trapt--execute "list"
+                                     :packages packages
+                                     :arglist arglist)))
     (unless (member trapt-list--buffer-name trapt--buffer-names)
       (push trapt-list--buffer-name trapt--buffer-names))
     (trapt-list--apt-list-to-tablist trapt-list--buffer-name apt-output)))
