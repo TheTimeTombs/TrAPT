@@ -19,9 +19,10 @@ Use transient menus to interact with the APT package manager.
 
 TrAPT was designed to fit some niche needs:
 
-1. To make it simpler to call APT commands without typos (for instance, always accidentally typing isntall rather than install)
+1. To make it faster and simpler to call APT commands
 2. To be able to view ~apt list~ output in a sortable, serachable, and markable list
-3. To make it easy to export the output 
+3. To make it easy to export the output of ~apt list~
+4. To be able to run APT commands on a remote server
 
 * Features
 
@@ -34,6 +35,7 @@ TrAPT was designed to fit some niche needs:
 + Install and remove programs with APT using Org mode
 + Use ~trapt-exec-find~ in your Emacs configuration to create a report or required executables that your configuration depends on
 + Supports sending commands to eshell or vterm
++ Run APT commands on a remote server
 
 * Installation
 
@@ -119,9 +121,28 @@ From the report buffer, the following commands can be run:
 
 This package was inspired by the [[https://github.com/abo-abo/whicher][Whicher]] pacakge for Emacs. This is an intent to take that similar idea but to extend it with more features.
 
-* Future Plans
+* Running Commands On Remote Servers
 
-+ [ ] Speed up pulls when ~apt list~ is called with no arguments and pulls the entire list of packages from all repositories.
-  - Us asynchronous processing to prevent Emacs from locking up
-  - Consider using faster text processing tools such as ~sed~ or use better Lisp data types for faster processing
-+ Consider supporting other popular pacakge managers.
+TrAPT can run commands on a remote server using ssh. This uses the built-in tramp pacakage to make remote connections. To configure TrAPT, tramp needs be configured. An example configuration for a remote tramp connection that uses the fish shell is given below:
+
+#+begin_src emacs-lisp :tangle yes
+  ;; Set configuration options for a fish shell profile remotely
+  (connection-local-set-profile-variables
+   'remote-fish
+   '((shell-file-name . "/bin/fish")
+     (shell-command-switch . "-c")
+     (shell-interactive-switch . "-i")
+     (shell-login-switch . "-l")))
+  ;; Tell tramp to connect to remote connection using ssh and 'remote-fish profile
+  (connection-local-set-profiles
+   `(:application tramp :protocol "ssh" :machine "IPaddress or server name")
+   'remote-fish)
+#+end_src
+
+When tramp is configured, you can then define a list of remote connections for TrAPT by customizing the variable ~trapt-remotes~:
+
+#+begin_src emacs-lisp :tangle yes
+  (setopt trapt-remotes '("username@server1" "username2@server2"))
+#+end_src
+
+When the remote option is used on a TrAPT command, the user will then be prompted to select a server from ~trapt-remotes~ using ~completing-read~.

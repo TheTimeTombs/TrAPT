@@ -71,7 +71,7 @@ the sort order."
 (defvar trapt-list--columns '("Name" "Version" "Architecture" "Status")
   "A list of column names for `trapt-list-mode'.")
 
-(defvar trapt-list--marked-packages nil
+(defvar-local trapt-list--marked-packages nil
   "The list of packges marked in the current APT List Buffer.")
 
 (defvar trapt-list--buffer-name "*APT List*"
@@ -79,12 +79,6 @@ the sort order."
 
 (defvar trapt-list--mode-name "TrAPT List"
   "The name of `trapt-list-mode' buffer.")
-
-;; Clear TrAPT--marked-packages when list buffer closed
-(add-hook 'kill-buffer-hook
-          (lambda ()
-            (when (string-equal (buffer-name) trapt-list--buffer-name)
-              (setf trapt--marked-packages nil))))
 
 (easy-menu-define trapt-list-mode-menu trapt-list-mode-map
   "Menu when `trapt-list-mode' is active."
@@ -102,11 +96,12 @@ the sort order."
   "Take a list from APT-LIST-OUTPUT and add them to `tabulated-list-entries'."
   (setf tabulated-list-entries ())
   (let* ((apt-list-lines (trapt-list--process-lines apt-list-output))
-         (counter 0)
          (entries
           (cl-loop for element in apt-list-lines
-                   do (setf counter (+ 1 counter))
-                   collect `(,counter [,@element]))))
+                   for counter from 1
+                   collect (if (= (length element) 4)
+                               `(counter [,@element "none"])
+                             `(,counter [,@element])))))
     (setf tabulated-list-entries entries)))
 
 (defun trapt-list--process-lines (apt-list-output)
@@ -119,7 +114,9 @@ the sort order."
   "Split APT-LIST-OUTPUT lines while removing unwanted lines."
   (cl-remove-if (lambda (item)
                   (or (string-empty-p item)
+                      (string-prefix-p "N:" item)
                       (string-prefix-p "WARNING:" item)
+                      (string-prefix-p "Listing" item)
                       (string-prefix-p "Listing..." item)))
                 (split-string apt-list-output "\n")))
 
@@ -140,7 +137,7 @@ The tablist buffer is populated with entries from APT-LIST-OUTPUT."
   (switch-to-buffer buffer-name))
 
 ;;;###autoload
-(cl-defun trapt-apt-list (&key packages arglist)
+(cl-defun trapt-apt-list (&key packages arglist remote)
   "Call `trapt-list--apt-list-to-tablist' and create a tablist buffer.
 The buffer contains the result of `apt list' run from in an inferior shell.
 Arguments can be passed to `apt list' as the list ARGLIST or by
@@ -154,9 +151,10 @@ ARGLIST is a list or space-separated string of arguments to the apt command.
 If no ARGLIST is passed, then the user will be prompted for a
 space-separated string containing the list of arguments to pass."
   (interactive)
-  (let* ((apt-output (trapt--execute "list"
-                                     :packages packages
-                                     :arglist arglist)))
+  (let ((apt-output (trapt--execute "list"
+                                    :packages packages
+                                    :arglist arglist
+                                    :remote remote)))
     (unless (member trapt-list--buffer-name trapt--buffer-names)
       (push trapt-list--buffer-name trapt--buffer-names))
     (trapt-list--apt-list-to-tablist trapt-list--buffer-name apt-output)))

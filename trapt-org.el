@@ -53,11 +53,11 @@
                                      ("upgrade" . "UPGRADE"))
   "Custom Org mode TODO keywords ."
   :group 'TrAPT-Org
-  :type 'alist)
+  :type '(repeat alist))
 
 (defcustom trapt-org-done-keyword "DONE"
   "Custom Org mode TODO keyword for terminal state."
-  :type 'string)
+  :type '(string))
 
 (defvar trapt-org-export-format
   "* %s %s \n:PROPERTIES:\n:Version: %s\n:Architecture: %s\n:END:\n"
