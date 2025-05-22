@@ -2,10 +2,10 @@
 
 ;; Author: Thomas Freeman
 ;; Maintainer: Thomas Freeman
-;; Version: 20250508
-;; Package-Requires: (tablist)
+;; Version: 20250522
+;; Package-Requires: ((emacs "24.4"))
 ;; Homepage: https://github.com/tfree87/trapt
-;; Keywords: APT
+;; Keywords: processes
 
 
 ;; This file is not part of GNU Emacs
@@ -34,9 +34,9 @@
 
 (require 'easymenu)
 (require 'tablist)
-(require 'trapt-core)
+(require 'trapt-utils)
 
-(defgroup TrAPT-List nil
+(defgroup trapt-list nil
   "TrAPT preferences for working with APT list."
   :group 'TrAPT
   :prefix "trapt-list-")
@@ -54,25 +54,21 @@ the sort order."
                                             (widget-value widget)
                                             trapt-list--columns)
                                      (widget-put widget
-                                                 (error "Default Sort Key must match a column name"))
+                                                 (error "Default Sort Key must\
+ match a column name"))
                                      widget)))
                (choice (const :tag "Ascending" nil)
                        (const :tag "Descending" t))))
 
 (defvar trapt-list-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map "i" #'trapt-apt-install)
-    (define-key map "I" #'trapt-apt-reinstall)
-    (define-key map "R" #'trapt-apt-remove)
-    (define-key map "P" #'trapt-apt-purge)
+    (when (fboundp #'trapt)
+      (define-key map "x" #'trapt))
     map)
   "Keymap for `trapt-list-mode'.")
 
 (defvar trapt-list--columns '("Name" "Version" "Architecture" "Status")
   "A list of column names for `trapt-list-mode'.")
-
-(defvar-local trapt-list--marked-packages nil
-  "The list of packges marked in the current APT List Buffer.")
 
 (defvar trapt-list--buffer-name "*APT List*"
   "The name of the buffer created for APT List Mode.")
@@ -94,7 +90,6 @@ the sort order."
 
 (defun trapt-list--create-tablist-entry-list (apt-list-output)
   "Take a list from APT-LIST-OUTPUT and add them to `tabulated-list-entries'."
-  (setf tabulated-list-entries ())
   (let* ((apt-list-lines (trapt-list--process-lines apt-list-output))
          (entries
           (cl-loop for element in apt-list-lines
@@ -107,7 +102,8 @@ the sort order."
 (defun trapt-list--process-lines (apt-list-output)
   "Splits the output of APT-LIST-OUTPUT."
   (let ((apt-list-entries (mapcar (lambda (line) (split-string line "[ /]"))
-                                  (trapt-list--apt-list-split-lines apt-list-output))))
+                                  (trapt-list--apt-list-split-lines
+                                   apt-list-output))))
     apt-list-entries))
 
 (defun trapt-list--apt-list-split-lines (apt-list-output)
@@ -125,6 +121,10 @@ the sort order."
 The tablist buffer is populated with entries from APT-LIST-OUTPUT."
   (with-current-buffer (get-buffer-create buffer-name)
     (trapt-list-mode)
+    (when (boundp 'trapt--tablist-buffers)
+      (if trapt--tablist-buffers
+          (add-to-list 'trapt--tablist-buffers trapt-list--buffer-name)
+        (push trapt-list--buffer-name trapt--tablist-buffers)))
     (setf tabulated-list-sort-key trapt-list-default-sort-key)
     (setf tabulated-list-format [("Name" 30 t)
                                  ("Source" 25 t)
@@ -136,27 +136,16 @@ The tablist buffer is populated with entries from APT-LIST-OUTPUT."
     (revert-buffer))
   (switch-to-buffer buffer-name))
 
-;;;###autoload
-(cl-defun trapt-apt-list (&key packages arglist remote)
+(defun trapt-list--create-tablist (command &optional server)
   "Call `trapt-list--apt-list-to-tablist' and create a tablist buffer.
+
 The buffer contains the result of `apt list' run from in an inferior shell.
-Arguments can be passed to `apt list' as the list ARGLIST or by
-the transient menu `trapt-transient--apt-list-transient'.
 
-PACKAGES is a list or space-separated string of packages to upgrade.
-If no PACKAGES are passed, then the user will be prompted for a
-space-separated string containing the list of packages to upgrade.
+COMMAND must be a string with the form `sudo apt list [arguments]'.
 
-ARGLIST is a list or space-separated string of arguments to the apt command.
-If no ARGLIST is passed, then the user will be prompted for a
-space-separated string containing the list of arguments to pass."
-  (interactive)
-  (let ((apt-output (trapt--execute "list"
-                                    :packages packages
-                                    :arglist arglist
-                                    :remote remote)))
-    (unless (member trapt-list--buffer-name trapt--buffer-names)
-      (push trapt-list--buffer-name trapt--buffer-names))
+SERVER is a string of the form username@server that specifies a server on which
+to run the command."
+  (let ((apt-output (trapt-utils--shell-command-to-string command server)))
     (trapt-list--apt-list-to-tablist trapt-list--buffer-name apt-output)))
 
 ;;;###autoload
@@ -168,4 +157,4 @@ space-separated string containing the list of arguments to pass."
 
 (provide 'trapt-list)
 
-;;; trapt-list.el ends here.
+;;; trapt-list.el ends here

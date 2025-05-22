@@ -115,9 +115,7 @@ From the report buffer, the following commands can be run:
 |-----+---------------------------+---------------------------------------------|
 | p   | trapt-exec-find-goto-path | Go to path where executable resides         |
 | c   | trapt-exec-find-goto-call | Go to .el file where trapt-exec-find called |
-| i   | trapt-apt-install         | Install marked packages                     |
-| R   | trapt-apt-remove          | Remove marked packages                      |
-| P   | trapt-apt-purge           | Purge marked packages                       |
+| x   | trapt-apt-install         | Install marked packages                     |
 
 This package was inspired by the [[https://github.com/abo-abo/whicher][Whicher]] pacakge for Emacs. This is an intent to take that similar idea but to extend it with more features.
 
