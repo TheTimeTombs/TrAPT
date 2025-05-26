@@ -37,7 +37,10 @@ TrAPT was designed to fit some niche needs:
 + Supports sending commands to eshell or vterm
 + Run APT commands on a remote server
 
-* Installation
+* Requirements
+
+- Emacs 28.1 or higher
+- Emacs [[https://github.com/politza/tablist][tablist]] package
 
 This package requires the tablist package be installed. You can install the tablist package with ~packages-list-packages~ or with ~use-package~:
 
@@ -46,6 +49,8 @@ This package requires the tablist package be installed. You can install the tabl
     :ensure t
     :defer t)
 #+end_src
+
+* Installation
 
   Clone this repo into your Emacs load path and load with the following :
 
