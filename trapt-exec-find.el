@@ -43,14 +43,15 @@
   "Customization options for TrAPT-Exec-Find."
   :group 'TrAPT)
 
-(defvar trapt-exec-find--columns '("Name"
+(defvar trapt-exec-find--columns '("Package Name"
+                                   "Executable Name"
                                    "Path"
                                    "Version"
                                    "Package Manager"
                                    "Calling File")
   "A list of column names for `trapt-exec-find-mode'.")
 
-(defcustom trapt-exec-find-default-sort-key '("Name" . nil)
+(defcustom trapt-exec-find-default-sort-key '("Package Name" . nil)
   "Sort key for results returned from `trapt-exec-find-report'.
 
  This should be a cons cell (NAME . FLIP) where NAME is a string matching one of
@@ -117,16 +118,16 @@ manager.")
   "Pass `trapt-exec-find-list' and add them to `tabulated-list-entries'.
 Additionally, determine the execuable paths for each executable and pass them to
 `tabulated-list-entries'."
-  (let*  ((counter 0)
-          (entries
+  (let*  ((entries
            (cl-loop for element in trapt-exec-find--list
-                    do (setf counter (+ 1 counter))
+                    for counter from 1
                     collect `(,counter [,(car element)
+                                        ,(nth 1 element)
                                         ,(trapt-exec-find--progpath
-                                          (car element))
+                                          (nth 1 element))
                                         ,(nth 2 element)
                                         ,(nth 3 element)
-                                        ,(nth 1 element)]))))
+                                        ,(nth 4 element)]))))
     (setf tabulated-list-entries entries)))
 
 (defun trapt-exec-find-goto-path ()
@@ -135,17 +136,18 @@ Additionally, determine the execuable paths for each executable and pass them to
   (trapt-utils--check-mode "TrAPT Exec Find"
                            (find-file
                             (file-name-directory
-                             (trapt-utils--get-tablist-item 1)))))
+                             (trapt-utils--get-tablist-item 2)))))
 
 (defun trapt-exec-find-goto-call ()
   "Opens the file in which `trapt-exec-find' was called for the item at point."
   (interactive)
   (trapt-utils--check-mode "TrAPT Exec Find"
-                           (find-file (trapt-utils--get-tablist-item 4))))
+                           (find-file (trapt-utils--get-tablist-item 5))))
 
 ;;;###autoload
 (cl-defun trapt-exec-find (command-string
                            &key
+                           pkg-name
                            (version (propertize
                                      "not specified"
                                      'font-lock-face
@@ -158,15 +160,20 @@ Additionally, determine the execuable paths for each executable and pass them to
 The value is stored it in`trap-exec--find-list'. The original COMMAND-STRING
 will be returned.
 
+PKG-NAME is the name of the package if to install from the package manager if
+that name differs from the first element of COMMAND-STRING.
+
 VERSION is an optional string that specifies the program version. Currently,
 this is for reference purposes only.
 
 PKG-MGR is an optional string containg the name of the package manager used to
 manage this package. Currently, this if for reference purposes only."
-  (let ((program (file-name-nondirectory (car (split-string command-string)))))
+  (let* ((program (file-name-nondirectory (car (split-string command-string))))
+         (pkg-name (or pkg-name program)))
     (when (stringp program)
-      (unless (member program trapt-exec-find--list)
-        (push `(,program ,load-file-name ,version ,pkg-mgr)
+      (unless (member program (cl-loop for elt in trapt-exec-find--list
+                                       collect (car elt)))
+        (push `(,pkg-name ,program ,version ,pkg-mgr ,load-file-name)
               trapt-exec-find--list))))
   command-string)
 
@@ -183,7 +190,8 @@ manage this package. Currently, this if for reference purposes only."
                        trapt-exec-find--report-buffer-name)
         (push trapt-exec-find--report-buffer-name trapt--tablist-buffers)))
     (setf tabulated-list-sort-key trapt-exec-find-default-sort-key)
-    (setf tabulated-list-format [("Name" 15 t)
+    (setf tabulated-list-format [("Package Name" 15 t)
+                                 ("Executable Name" 15 t)
                                  ("Path" 30 t)
                                  ("Version" 15 t)
                                  ("Package Manager" 15 t)
