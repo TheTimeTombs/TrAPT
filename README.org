@@ -65,7 +65,7 @@ Alternatively, using use-package you can put this package outside of your load p
     :load-path "/path/to/trapt"
     :init
     (require 'trapt-exec-find) ; Load early if you wish to check your config
-    :commands (trapt trapt-exec-find-report)
+    :commands (trapt trapt-exec-find-report))
 #+end_src
 
 * Usage
