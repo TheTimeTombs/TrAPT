@@ -54,7 +54,7 @@ This package requires the tablist package be installed. You can install the tabl
 
   Clone this repo into your Emacs load path and load with the following :
 
-  ,#+begin_src emacs-lisp
+#+begin_src emacs-lisp
     (require 'trapt)
 #+end_src
 
