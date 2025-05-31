@@ -58,6 +58,18 @@ This package requires the tablist package be installed. You can install the tabl
   (require 'trapt)
 #+end_src
 
+If you your version of Emacs supports ~use-package~ with the ~:vc~ keyword, you can install TrAPT using the following:
+
+#+begin_src emacs-lisp
+  (use-package trapt
+    :vc (:url "https://github.com/TheTimeTombs/TrAPT"
+         :rev :newest
+         :branch "main")
+  :init
+  (require 'trapt-exec-find) ; Load early if you wish to check your config
+  :commands (trapt trapt-exec-find-report))
+#+end_src
+
 Alternatively, using use-package you can put this package outside of your load path and load it with:
 
 #+begin_src emacs-lisp
