@@ -506,7 +506,7 @@ If REMOTE in non-nil, then the user will be prompted for a remote server from
    ["Host"
     ("R" "remote host" "remote")]])
 
-;;;###autoload (autoload 'trapt "A transient menu for APT." nil t)
+;;;###autoload (autoload 'trapt "trapt.el" "A transient menu for APT." t)
 (transient-define-prefix trapt ()
   "Transient menu for apt package manager."
   ["APT Package Manager"
