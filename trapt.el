@@ -48,6 +48,13 @@ the form username@server."
   :type '(repeat string)
   :group 'trapt)
 
+(defcustom trapt-apt-sourcelist-file-path "/etc/apt/sources.list"
+  "A list of remote ssh connections for TrAPT.
+`trapt-remotes' should be a quoted list in which each element of the list is in
+the form username@server."
+  :type '(string)
+  :group 'trapt)
+
 (defcustom trapt-shell nil
   "The shell to run TrAPT commands."
   :type '(string)
@@ -58,7 +65,7 @@ the form username@server."
   "A list of tablist buffer names with package tablists for TrAPT.")
 
 (defun trapt--transient-remote (remote)
-  "Wrapper function for `trapt--server'.
+  "Wrapper function for `trapt--get-server'.
 
 If the current function was called by a transient menu, call
 `trapt--get-server' while passing a non-nil value if `remote' is in the list of
@@ -72,11 +79,9 @@ Otherwise call `trapt--get-server' passing the value REMOTE."
     (trapt--get-server remote)))
 
 (defun trapt--transient-args-clean (arglist)
-  "Remove the value `remote' from ARGLIST and return it."
+  "Remove the value `remote' from ARGLIST and return the shortened list."
   (if (bound-and-true-p transient-current-command)
       (let* ((arguments (transient-args transient-current-command))
-             ;; Remove `remote' arugment if it is present
-             ;; Send empty string if list is empty
              (transient-args (or (cl-remove-if #'(lambda (elt)
                                                    (string= "remote" elt))
                                                arguments)
@@ -139,17 +144,20 @@ on that corresponding remote server."
                    operation
                    packages
                    arguments)))
-    (if (string= operation "list")
-        (trapt-list--create-tablist command)
-      (trapt-utils--run-command command trapt-shell server))))
+    (cond ((string= operation "list")
+           (trapt-list--create-tablist command server))
+          ((string= operation "show")
+           (trapt-utils--shell-command-to-string command))
+          (t
+           (trapt-utils--run-command command trapt-shell server)))))
 
 ;;;###autoload
 (cl-defun trapt-apt-install (&key packages arglist (prompt t) remote)
   "Run apt install. This is a wrapper function for `trapt--execute'.
 
-PACKAGES is space-separated string of packages to upgrade. If no PACKAGES are
-passed, then the user will be prompted for a space-separated string containing
-the list of packages to upgrade.
+PACKAGES is a list or space-separated string of packages to upgrade. If no
+PACKAGES are passed, then the user will be prompted for a space-separated string
+containing the list of packages to upgrade.
 
 ARGLIST is a space-separated string of arguments to the apt command. If no
 ARGLIST is passed, then the user will be prompted for a space-separated string
@@ -159,7 +167,7 @@ If PROMPT is nil, then the user will not be prompted for packages and arguments
 if none are given. This should be used for non-interactive calls.
 
 If REMOTE in non-nil, then the user will be prompted for a remote server from
-`trapt-remotes' on which to run `apt remove'."
+`trapt-remotes' on which to run `apt install'."
   (interactive)
   (trapt--execute "install"
                   :packages (trapt--get-marked-packages packages)
@@ -171,19 +179,19 @@ If REMOTE in non-nil, then the user will be prompted for a remote server from
 (cl-defun trapt-apt-reinstall (&key packages arglist (prompt t) remote)
   "Run apt reinstall. This is a wrapper function for `trapt--execute'.
 
-PACKAGES is space-separated string of packages to upgrade. If no PACKAGES are
-passed, then the user will be prompted for a space-separated string containing
-the list of packages to upgrade.
+PACKAGES is a list or space-separated string of packages to upgrade. If no
+PACKAGES are passed, then the user will be prompted for a space-separated string
+containing the list of packages to upgrade.
 
-ARGLIST is a space-separated string of arguments to the apt command. If no
-ARGLIST is passed, then the user will be prompted for a space-separated string
-containing the list of arguments to pass.
+ARGLIST is a list or space-separated string of arguments to the apt command. If
+no ARGLIST is passed, then the user will be prompted for a space-separated
+string containing the list of arguments to pass.
 
 If PROMPT is nil, then the user will not be prompted for packages and arguments
 if none are given. This should be used for non-interactive calls.
 
 If REMOTE in non-nil, then the user will be prompted for a remote server from
-`trapt-remotes' on which to run `apt remove'."
+`trapt-remotes' on which to run `apt reinstall'."
   (interactive)
   (trapt--execute "reinstall"
                   :packages (trapt--get-marked-packages packages)
@@ -195,13 +203,13 @@ If REMOTE in non-nil, then the user will be prompted for a remote server from
 (cl-defun trapt-apt-remove (&key packages arglist (prompt t) remote)
   "Run apt upgrade. This is a wrapper function for `trapt--execute'.
 
-PACKAGES is space-separated string of packages to upgrade. If no PACKAGES are
-passed, then the user will be prompted for a space-separated string containing
-the list of packages to upgrade.
+PACKAGES is a list or space-separated string of packages to upgrade. If no
+PACKAGES are passed, then the user will be prompted for a space-separated string
+containing the list of packages to upgrade.
 
-ARGLIST is a space-separated string of arguments to the apt command. If no
-ARGLIST is passed, then the user will be prompted for a space-separated string
-containing the list of arguments to pass.
+ARGLIST is a list or space-separated string of arguments to the apt command. If
+no ARGLIST is passed, then the user will be prompted for a space-separated
+string containing the list of arguments to pass.
 
 If PROMPT is nil, then the user will not be prompted for packages and arguments
 if none are given. This should be used for non-interactive calls.
@@ -219,15 +227,15 @@ If REMOTE in non-nil, then the user will be prompted for a remote server from
 (cl-defun trapt-apt-upgrade (&key arglist prompt remote)
   "Run apt upgrade. This is a wrapper function for `trapt--execute'.
 
-ARGLIST is a space-separated string of arguments to the apt command. If no
-ARGLIST is passed, then the user will be prompted for a space-separated string
-containing the list of arguments to pass.
+ARGLIST is a list or space-separated string of arguments to the apt command. If
+no ARGLIST is passed, then the user will be prompted for a space-separated
+string containing the list of arguments to pass.
 
 If PROMPT is non-nil, then the user will be prompted for packages and arguments
 if none are given.
 
 If REMOTE in non-nil, then the user will be prompted for a remote server from
-`trapt-remotes' on which to run `apt remove'."
+`trapt-remotes' on which to run `apt upgrade'."
   (interactive)
   (trapt--execute "upgrade"
                   :arglist (trapt--transient-args-clean arglist)
@@ -238,19 +246,19 @@ If REMOTE in non-nil, then the user will be prompted for a remote server from
 (cl-defun trapt-apt-purge (&key packages arglist (prompt t) remote)
   "Run apt purge. This is a wrapper function for `trapt--execute'.
 
-PACKAGES is space-separated string of packages to upgrade. If no PACKAGES are
-passed, then the user will be prompted for a space-separated string containing
-the list of packages to upgrade.
+PACKAGES is a list or space-separated string of packages to upgrade. If no
+PACKAGES are passed, then the user will be prompted for a space-separated string
+containing the list of packages to upgrade.
 
-ARGLIST is a space-separated string of arguments to the apt command. If no
-ARGLIST is passed, then the user will be prompted for a space-separated string
-containing the list of arguments to pass.
+ARGLIST is a list or space-separated string of arguments to the apt command. If
+no ARGLIST is passed, then the user will be prompted for a space-separated
+string containing the list of arguments to pass.
 
 If PROMPT is nil, then the user will not be prompted for packages and arguments
 if none are given. This should be used for non-interactive calls.
 
 If REMOTE in non-nil, then the user will be prompted for a remote server from
-`trapt-remotes' on which to run `apt remove'."
+`trapt-remotes' on which to run `apt purge'."
   (interactive)
   (trapt--execute "purge"
                   :packages (trapt--get-marked-packages packages)
@@ -262,15 +270,15 @@ If REMOTE in non-nil, then the user will be prompted for a remote server from
 (cl-defun trapt-apt-autoremove (&key arglist prompt remote)
   "Run apt autoremove.This is a wrapper function for `trapt--execute'.
 
-ARGLIST is a space-separated string of arguments to the apt command. If no
-ARGLIST is passed, then the user will be prompted for a space-separated string
-containing the list of arguments to pass.
+ARGLIST is a list or space-separated string of arguments to the apt command. If
+no ARGLIST is passed, then the user will be prompted for a space-separated
+string containing the list of arguments to pass.
 
 If PROMPT is non-nil, then the user will be prompted for packages and arguments
 if none are given.
 
 If REMOTE in non-nil, then the user will be prompted for a remote server from
-`trapt-remotes' on which to run `apt remove'."
+`trapt-remotes' on which to run `apt autoremove'."
   (interactive)
   (trapt--execute "autoremove"
                   :arglist (trapt--transient-args-clean arglist)
@@ -281,17 +289,37 @@ If REMOTE in non-nil, then the user will be prompted for a remote server from
 (cl-defun trapt-apt-full-upgrade (&key arglist prompt remote)
   "Run apt full-upgrade. This is a wrapper function for `trapt--execute'.
 
-ARGLIST is a space-separated string of arguments to the apt command. If no
-ARGLIST is passed, then the user will be prompted for a space-separated string
-containing the list of arguments to pass.
+ARGLIST is a list or space-separated string of arguments to the apt command. If
+no ARGLIST is passed, then the user will be prompted for a space-separated
+string containing the list of arguments to pass.
 
 If PROMPT is non-nil, then the user will not be prompted for packages and
 arguments if none are given.
 
 If REMOTE in non-nil, then the user will be prompted for a remote server from
-`trapt-remotes' on which to run `apt remove'."
+`trapt-remotes' on which to run `apt full-upgrade'."
   (interactive)
   (trapt--execute "full-upgrade"
+                  :arglist (trapt--transient-args-clean arglist)
+                  :prompt prompt
+                  :server (trapt--transient-remote remote)))
+
+;;;###autoload
+(cl-defun trapt-apt-build-dep (&key arglist prompt remote)
+  "Run apt build-dep. This is a wrapper function for `trapt--execute'.
+
+ARGLIST is a list or space-separated string of arguments to the apt command. If
+no ARGLIST is passed, then the user will be prompted for a space-separated
+string containing the list of arguments to pass.
+
+If PROMPT is non-nil, then the user will not be prompted for packages and
+arguments if none are given.
+
+If REMOTE in non-nil, then the user will be prompted for a remote server from
+`trapt-remotes' on which to run `apt build-dep'."
+  (interactive)
+  (trapt--execute "build-dep"
+                  :packages (trapt--get-marked-packages packages)
                   :arglist (trapt--transient-args-clean arglist)
                   :prompt prompt
                   :server (trapt--transient-remote remote)))
@@ -300,15 +328,15 @@ If REMOTE in non-nil, then the user will be prompted for a remote server from
 (cl-defun trapt-apt-autoclean (&key arglist prompt remote)
   "Run apt autoclean.  This is a wrapper function for `trapt--execute'.
 
-ARGLIST is a space-separated string of arguments to the apt command. If no
-ARGLIST is passed, then the user will be prompted for a space-separated string
-containing the list of arguments to pass.
+ARGLIST is a list or space-separated string of arguments to the apt command. If
+no ARGLIST is passed, then the user will be prompted for a space-separated
+string containing the list of arguments to pass.
 
 If PROMPT is non-nil, then the user will not be prompted for packages and
 arguments if none are given.
 
 If REMOTE in non-nil, then the user will be prompted for a remote server from
-`trapt-remotes' on which to run `apt remove'."
+`trapt-remotes' on which to run `apt autoclean'."
   (interactive)
   (trapt--execute "autoclean"
                   :arglist (trapt--transient-args-clean arglist)
@@ -319,17 +347,17 @@ If REMOTE in non-nil, then the user will be prompted for a remote server from
 (cl-defun trapt-apt-update (&key arglist prompt remote)
   "Run apt update. This is a wrapper function for `trapt--execute'.
 
-ARGLIST is a space-separated string of arguments to the apt command. If no
-ARGLIST is passed, then the user will be prompted for a space-separated string
-containing the list of arguments to pass.
+ARGLIST is a list or space-separated string of arguments to the apt command. If
+no ARGLIST is passed, then the user will be prompted for a space-separated
+string containing the list of arguments to pass.
 
 If PROMPT is non-nil, then the user will not be prompted for packages and
 arguments if none are given.
 
 If REMOTE in non-nil, then the user will be prompted for a remote server from
-`trapt-remotes' on which to run `apt remove'."
+`trapt-remotes' on which to run `apt update'."
   (interactive)
- (trapt--execute "update"
+  (trapt--execute "update"
                   :arglist (trapt--transient-args-clean arglist)
                   :prompt prompt
                   :server (trapt--transient-remote remote)))
@@ -338,19 +366,19 @@ If REMOTE in non-nil, then the user will be prompted for a remote server from
 (cl-defun trapt-apt-list (&key packages arglist (prompt t) remote)
   "Run apt list. This is a wrapper function for `trapt--execute'.
 
-PACKAGES is space-separated string of packages to upgrade. If no PACKAGES are
-passed, then the user will be prompted for a space-separated string containing
-the list of packages to upgrade.
+PACKAGES is a list or space-separated string of packages to upgrade. If no
+PACKAGES are passed, then the user will be prompted for a space-separated string
+containing the list of packages to upgrade.
 
-ARGLIST is a space-separated string of arguments to the apt command. If no
-ARGLIST is passed, then the user will be prompted for a space-separated string
-containing the list of arguments to pass.
+ARGLIST is a list or space-separated string of arguments to the apt command. If
+no ARGLIST is passed, then the user will be prompted for a space-separated
+string containing the list of arguments to pass.
 
 If PROMPT is nil, then the user will not be prompted for packages and arguments
 if none are given. This should be used for non-interactive calls.
 
 If REMOTE in non-nil, then the user will be prompted for a remote server from
-`trapt-remotes' on which to run `apt remove'."
+`trapt-remotes' on which to run `apt list'."
   (interactive)
   (trapt--execute "list"
                   :packages (trapt--get-marked-packages packages)
@@ -358,15 +386,67 @@ If REMOTE in non-nil, then the user will be prompted for a remote server from
                   :prompt prompt
                   :server (trapt--transient-remote remote)))
 
-(defun trapt-edit-sources ()
-  "Opens `/etc/apt/sources.list' for editing as root user using tramp sudo."
+;;;###autoload
+(cl-defun trapt-apt-show (&key packages arglist (prompt t) remote)
+  "Run apt list. This is a wrapper function for `trapt--execute'.
+
+PACKAGES is a list or space-separated string of packages to upgrade. If no
+PACKAGES are passed, then the user will be prompted for a space-separated string
+containing the list of packages to upgrade.
+
+ARGLIST is a list or space-separated string of arguments to the apt command. If
+no ARGLIST is passed, then the user will be prompted for a space-separated
+string containing the list of arguments to pass.
+
+If PROMPT is nil, then the user will not be prompted for packages and arguments
+if none are given. This should be used for non-interactive calls.
+
+If REMOTE in non-nil, then the user will be prompted for a remote server from
+`trapt-remotes' on which to run `apt show'."
   (interactive)
-  (find-file "/sudo::/etc/apt/sources.list"))
+  (get-buffer-create "*APT Show*")
+  (switch-to-buffer "*APT Show*")
+  (erase-buffer)
+  (insert
+   (trapt--execute "show"
+                   :packages (trapt--get-marked-packages packages)
+                   :arglist (trapt--transient-args-clean arglist)
+                   :prompt prompt
+                   :server (trapt--transient-remote remote))))
+
+;;;###autoload
+(cl-defun trapt-apt-moo (&key remote)
+  "Run apt moo. This is a wrapper function for `trapt--execute'.
+
+If REMOTE in non-nil, then the user will be prompted for a remote server from
+`trapt-remotes' on which to run `apt moo'."
+  (interactive)
+  (trapt--execute "moo"
+                  :packages nil
+                  :arglist nil
+                  :prompt nil
+                  :server (trapt--transient-remote remote)))
+
+(cl-defun trapt-apt-edit-sources (&key remote)
+  "Opens `/etc/apt/sources.list' for editing as root user using tramp sudo.
+
+  If REMOTE in non-nil, then the user will be prompted for a remote server from
+`trapt-remotes' on which to run `apt remove'."
+  (interactive)
+  (let* ((server (if (trapt--transient-remote remote)
+                     (format "ssh:%s|" (trapt--get-server t))
+                   ""))
+         (path (format "/%ssudo::%s"
+                       server
+                       trapt-apt-sourcelist-file-path)))
+    (message path)
+    (find-file path)))
 
 (transient-define-prefix trapt--apt-upgrade-transient ()
   "Transient menu for apt upgrade commands."
   ["APT Upgrade Commands"
    ["Arguments"
+    ("-s" "simulate" "--simulate")
     ("-y" "assume yes" "--assume-yes")
     ("-w" "with new packages" "--with-new-pkgs")]
    ["Run"
@@ -381,8 +461,10 @@ If REMOTE in non-nil, then the user will be prompted for a remote server from
   "Transient menu for apt install command."
   ["APT Install"
    ["Arguments"
+    ("-d" "download only" "--download-only")
     ("-n" "no recommends" "--no-install-recommends")
     ("-r" "reinstall" "--reinstall")
+    ("-s" "simulate" "--simulate")
     ("-y" "assume yes" "--assume-yes")]
    ["Run"
     ("i" "install" trapt-apt-install)]
@@ -393,11 +475,22 @@ If REMOTE in non-nil, then the user will be prompted for a remote server from
   "Transient menu for apt remove commands."
   ["APT Removal Commands"
    ["Arguments"
+    ("-s" "simlulate" "--simulate")
     ("-y" "assume yes" "--assume-yes")]
    ["Run"
     ("a" "autoremove" trapt-apt-autoremove)
     ("p" "purge" trapt-apt-purge)
     ("r" "remove" trapt-apt-remove)]
+   ["Host"
+    ("R" "remote host" "remote")]])
+
+(transient-define-prefix trapt--apt-other-transient ()
+  "Transient menu for apt package manager."
+  ["APT Package Manager"
+   ["Other Commands"
+    ("e" "edit sources" trapt-apt-edit-sources)
+    ("m" "moo" trapt-apt-moo)
+    ("s" "show" trapt-apt-show)]
    ["Host"
     ("R" "remote host" "remote")]])
 
@@ -417,11 +510,10 @@ If REMOTE in non-nil, then the user will be prompted for a remote server from
 (transient-define-prefix trapt ()
   "Transient menu for apt package manager."
   ["APT Package Manager"
-   ["Edit Sources"
-    ("e" "edit sources" trapt-edit-sources)]
-   ["Sub-menus"
+   ["Submenus"
     ("i" "install packages" trapt--apt-install-transient)
     ("l" "list packages" trapt--apt-list-transient)
+    ("o" "other commands" trapt--apt-other-transient)
     ("r" "remove/purge packages" trapt--apt-remove-transient)
     ("u" "update/upgrade/autoclean" trapt--apt-upgrade-transient)]])
 

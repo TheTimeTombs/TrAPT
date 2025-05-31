@@ -95,13 +95,22 @@ ENTRIES is a list of items from a tablist buffer."
      (insert (concat (trapt-org--generate-custom-todos)
                      "\n\n"))
      (cl-loop  for item in entries
-               do (insert (format
-                           trapt-org-export-format
-                           (aref (cadr item) 0)
-                           (trapt-org--status-to-tags
-                            (aref (cadr item) 4))
-                           (aref (cadr item) 2)
-                           (aref (cadr item) 3))))
+               do (insert 
+                   (if (eq (type-of item) 'cons)
+                       ;; List of cons from `tablist-get-marked-items'
+                       (format trapt-org-export-format
+                               (aref (cdr item) 0)
+                               (trapt-org--status-to-tags
+                                (aref (cdr item) 4))
+                               (aref (cdr item) 2)
+                               (aref (cdr item) 3))
+                     ;; List from `tabulated-list-entries'
+                     (format trapt-org-export-format
+                             (aref (cadr item) 0)
+                             (trapt-org--status-to-tags
+                              (aref (cadr item) 4))
+                             (aref (cadr item) 2)
+                             (aref (cadr item) 3)))))
      ;; Restart org mode to load TODO states
      (org-mode-restart))))
 

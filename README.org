@@ -55,7 +55,7 @@ This package requires the tablist package be installed. You can install the tabl
   Clone this repo into your Emacs load path and load with the following :
 
 #+begin_src emacs-lisp
-    (require 'trapt)
+  (require 'trapt)
 #+end_src
 
 Alternatively, using use-package you can put this package outside of your load path and load it with:
@@ -80,16 +80,27 @@ You can also run the following commands directly. Calling these functions will p
 
  | Emacs Function         | APT Command      |
  |------------------------+------------------|
- | trapt-apt-full-upgrade | apt full-upgrade |
- | trapt-apt-install      | apt install      |
- | trapt-apt-list         | apt list         |
- | trapt-apt-purge        | apt purge        |
- | trapt-apt-remove       | apt remove       |
- | trapt-apt-update       | apt update       |
+ | ~trapt-apt-build-dep~    | apt build-dep    |
+ | ~trapt-apt-full-upgrade~ | apt full-upgrade |
+ | ~trapt-apt-install~      | apt install      |
+ | ~trapt-apt-list~         | apt list         |
+ | ~trapt-apt-moo~          | apt moo          |
+ | ~trapt-apt-purge~        | apt purge        |
+ | ~trapt-apt-remove~       | apt remove       |
+ | ~trapt-apt-show~         | apt show         |
+ | ~trapt-apt-update~       | apt update       |
 
 ** Manage Packages with APT List Mode
 
 Running trapt-apt-list will direct output to a tablist buffer. From this buffer, packages can be marked usinng the ~m~ key. Once packages can be marked, users can execute APT operations on the selected packages with the =x= key to call up the TrAPT menu, ~M-x trapt~, or by calling the functions ~M-x trapt-apt-*~.
+
+From the apt list buffer, the following commands can be run:
+
+| Key | Command                 | Description                               |
+|-----+-------------------------+-------------------------------------------|
+| a   | ~trapt-org-export-all~    | Export all items to an Org mode buffer    |
+| m   | ~trapt-org-export-marked~ | Export marked items to an Org mode buffer |
+| x   | ~trapt~                   | Open trapt transient menu                 |
 
 ** Using Org Mode
 
@@ -97,12 +108,13 @@ Headings in Org mode that are simply package names can be marked with customized
 
  | APT Command  | Default Org TODO Keyword |
  |--------------+--------------------------|
- | full-upgrade | FULL-UPGRADE             |
- | install      | INSTALL                  |
- | purge        | PURGE                    |
- | reinstall    | REINSTALL                |
- | remove       | REMOVE                   |
- | upgrade      | UPGRADE                  |
+ | ~build-dep~    | BUILD-DEP                |
+ | ~full-upgrade~ | FULL-UPGRADE             |
+ | ~install~      | INSTALL                  |
+ | ~purge~        | PURGE                    |
+ | ~reinstall~    | REINSTALL                |
+ | ~remove~       | REMOVE                   |
+ | ~upgrade~      | UPGRADE                  |
 
  An example can be seen in the animation below.
 
@@ -126,9 +138,9 @@ From the report buffer, the following commands can be run:
 
 | Key | Command                   | Description                                 |
 |-----+---------------------------+---------------------------------------------|
-| p   | trapt-exec-find-goto-path | Go to path where executable resides         |
-| c   | trapt-exec-find-goto-call | Go to .el file where trapt-exec-find called |
-| x   | trapt                     | Open trapt transient menu                   |
+| p   | ~trapt-exec-find-goto-path~ | Go to path where executable resides         |
+| c   | ~trapt-exec-find-goto-call~ | Go to .el file where trapt-exec-find called |
+| x   | ~trapt~                     | Open trapt transient menu                   |
 
 This package was inspired by the [[https://github.com/abo-abo/whicher][Whicher]] pacakge for Emacs. This is an intent to take that similar idea but to extend it with more features.
 

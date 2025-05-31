@@ -34,6 +34,7 @@
 
 (require 'easymenu)
 (require 'tablist)
+(require 'trapt-org)
 (require 'trapt-utils)
 
 (defgroup trapt-list nil
@@ -63,6 +64,8 @@ the sort order."
 (defvar trapt-list-mode-map
   (let ((map (make-sparse-keymap)))
     (when (fboundp #'trapt)
+      (define-key map "a" #'trapt-org-export-all)
+      (define-key-map "m" #'trapt-org-export-marked)
       (define-key map "x" #'trapt))
     map)
   "Keymap for `trapt-list-mode'.")
