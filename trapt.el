@@ -439,7 +439,6 @@ If REMOTE in non-nil, then the user will be prompted for a remote server from
          (path (format "/%ssudo::%s"
                        server
                        trapt-apt-sourcelist-file-path)))
-    (message path)
     (find-file path)))
 
 (transient-define-prefix trapt--apt-upgrade-transient ()
