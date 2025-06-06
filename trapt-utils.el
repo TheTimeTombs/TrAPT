@@ -96,6 +96,16 @@ space-separated string containing the list of arguments to pass."
   (vterm-send-string command)
   (vterm-send-return))
 
+(defun trapt-utils--command (command &optional server)
+  "Run COMMAND with `async-shell-command'.
+
+If SERVER is a server name of the form username@server, run the
+command using ssh."
+  (interactive)
+  (if server
+      (clemav-utils--run-ssh server (async-shell-command command))
+    (async-shell-command command)))
+
 (defun trapt-utils--run-command (command &optional shell server)
   "Run COMMAND with `async-shell-command'.
 
@@ -109,7 +119,7 @@ on that corresponding remote server."
          (trapt-utils--vterm-exec command server))
         ((string= shell "eshell")
          (trapt-utils--eshell-exec command server))
-        (t (async-shell-command command))))
+        (t (trapt-utils--command command server))))
 
 (defun trapt-utils--vterm-exec (command &optional server)
   "Insert the string COMMAND in a vterm buffer and execute it.
