@@ -55,7 +55,7 @@ the form username@server."
   :type '(string)
   :group 'trapt)
 
-(defcustom trapt-shell nil
+(defcustom trapt-shell "default"
   "The shell to run TrAPT commands."
   :type '(string)
   :options '("default" "eshell" "vterm")
