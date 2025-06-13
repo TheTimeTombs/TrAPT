@@ -60,6 +60,9 @@ the sort order."
                (choice (const :tag "Ascending" nil)
                        (const :tag "Descending" t))))
 
+(defvar trapt-list--current-command nil
+  "The command used to generate the current list.")
+
 (defvar trapt-list-mode-map
   (let ((map (make-sparse-keymap)))
     (when (fboundp #'trapt)
@@ -77,6 +80,14 @@ the sort order."
 
 (defvar trapt-list--mode-name "TrAPT List"
   "The name of `trapt-list-mode' buffer.")
+
+(defvar trapt-list--num-installed nil)
+
+(defvar trapt-list--num-upgradable nil)
+
+(defvar trapt-list--num-residual nil)
+
+(defvar trapt-list--num-auto-intalled nil)
 
 (easy-menu-define trapt-list-mode-menu trapt-list-mode-map
   "Menu when `trapt-list-mode' is active."
@@ -99,7 +110,32 @@ the sort order."
                    collect (if (= (length element) 4)
                                `(counter [,@element "none"])
                              `(,counter [,@element])))))
-    (setf tabulated-list-entries entries)))
+    (setf tabulated-list-entries entries )))
+
+(defun trapt-list--update-stats ()
+  "docstring"
+  ;; Collect stats for reference
+  (let ((result
+         (cl-loop for element in tabulated-list-entries
+                  when  (string-match "upgradable" (aref (cadr element) 4))
+                  count element into num-upgradable
+                  when (string-match "installed" (aref (cadr element) 4))
+                  count element into num-installed
+                  when (string-match "residual-config" (aref (cadr element) 4))
+                  count element into num-residual
+                  when (string-match "automatic" (aref (cadr element) 4))
+                  count element into num-auto
+                  finally
+                  return
+                  (if (not (string-match "--upgradable" trapt-list--current-command))
+                      (cl-values `(trapt-list--num-installed . ,num-installed)
+                                 `(trapt-list--num-upgradable . ,num-upgradable)
+                                 `(trapt-list--num-residual . ,num-residual)
+                                 `(trapt-list--num-auto-installed . ,num-auto))
+                    ;; Only update upgradable stat if that list is called
+                    (cl-values`(trapt-list--num-upgradable . ,num-upgradable))))))
+    (trapt-utils--set-stats result)
+    (trapt-utils--save-stats)))
 
 (defun trapt-list--process-lines (apt-list-output)
   "Splits the output of APT-LIST-OUTPUT."
@@ -148,6 +184,7 @@ COMMAND must be a string with the form `sudo apt list [arguments]'.
 SERVER is a string of the form username@server that specifies a server on which
 to run the command."
   (let ((apt-output (trapt-utils--shell-command-to-string command server)))
+    (setf trapt-list--current-command command)
     (trapt-list--apt-list-to-tablist trapt-list--buffer-name apt-output)))
 
 ;;;###autoload

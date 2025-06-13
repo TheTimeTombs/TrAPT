@@ -41,6 +41,12 @@ proper parsing of the results that are returned from APT.")
   "A list of tablist buffer for TrAPT list.
 This list will be populated with buffer names as the buffers are created.")
 
+(defvar trapt-utils--persistent-stats '(trapt-list--num-installed
+                                        trapt-list--num-upgradable
+                                        trapt-list--num-residual
+                                        trapt-list--num-auto-installed)
+  "List of statisitics variables to save to disk.")
+
 (defmacro trapt-utils--check-mode (mode body)
   "BODY is a Lisp form that will execute if the current mode is MODE.
 If not, an error will be thrown."
@@ -54,6 +60,27 @@ If not, an error will be thrown."
                               (format "/ssh:%s:~/" ,server))))
      (with-connection-local-variables
       ,body)))
+
+(defun trapt-utils--set-stats (stats-list)
+  "Set satistics in STATS-LIST.
+
+STATS-LIST must of a list in the form of ((var1 . value1)...)."
+  (cl-loop for element in stats-list
+           do (set `,(car element) (cdr element))))
+
+(defun trapt-utils--save-stats ()
+  "Save TrAPT statistics to a file."
+  (let ((save-list
+         (cl-loop for varname in trapt-utils--persistent-stats
+                  collect `(,varname . ,(eval varname)))))
+    (with-temp-file trapt-stats-file
+      (insert (format "%s" save-list)))))
+
+(defun trapt-utils--read-file (filepath)
+  "Read contents from FILEPATH."
+  (with-temp-buffer
+    (insert-file-contents filepath)
+    (read (buffer-string))))
 
 (defun trapt-utils--list-or-string (value)
   "Return VALUE if VALUE is a string.
@@ -71,22 +98,35 @@ If VALUE is a list, return a space-separated string."
     (aref element idx)))
 
 (defun trapt-utils--build-command-string (operation
-                                          &optional packages arguments)
+                                          &optional
+                                          sudo
+                                          packages
+                                          arguments)
   "Concatenates the elements of an APT command string.
 
 OPERATION is a string containing a command for the APT package tool.
 
-PACKAGES is list or space-separated string of packages to upgrade.
-If no PACKAGES are passed, then the user will be prompted for a
-space-separated string containing the list of packages to upgrade.
+If SUDO is non-nil then the command will be called with `sudo'.
+
+PACKAGES is list or space-separated string of packages to upgrade. If no
+PACKAGES are passed, then the user will be prompted for a space-separated string
+containing the list of packages to upgrade.
 
 ARGUMENTS is a list or space-separated string of arguments to the apt command.
-If no ARGUMENTS is passed, then the user will be prompted for a
-space-separated string containing the list of arguments to pass."
-  (trapt-utils--list-to-string (list "sudo apt"
-                                     operation
-                                     (trapt-utils--list-or-string packages)
-                                     (trapt-utils--list-or-string arguments))))
+If no ARGUMENTS is passed, then the user will be prompted for a space-separated
+string containing the list of arguments to pass."
+  (let ((package-string (trapt-utils--list-or-string packages))
+        (arg-string (trapt-utils--list-or-string arguments)))
+    (format "%s%s %s %s%s"
+            (if sudo
+                "sudo "
+              "")
+            "apt"
+            operation
+            (if (not (string= package-string ""))
+                (concat package-string " ")
+              "")
+            arg-string)))
 
 (defun trapt-utils--vterm-command (command)
   "Opens a new vterm window and insert and execute COMMAND."
@@ -146,24 +186,24 @@ command using ssh."
         ((listp lst) (mapconcat #'identity lst " "))
         (t (error "Error: Must be a list!"))))
 
-(defun trapt-utils--shell-command-to-string (command &optional server)
-  "Run shell COMMAND in a shell and return the output as string.
+;; (defun trapt-utils--shell-command-to-string (command &optional server)
+;;   "Run shell COMMAND in a shell and return the output as string.
 
-SERVER is a string of the form username@server that specifies a server on which
-to run the command."
-  ;; Add options from `trapt-utils--apt-options' before
-  ;; sending the command to ensure the correct string is returned.
-  (let ((command-string (concat
-                         command
-                         " "
-                         (trapt-utils--list-to-string
-                          trapt-utils--apt-options))))
-    (if server
-        (progn (message (format "Running: %s on %s" command server))
-               (trapt-utils--run-ssh server
-                                     (shell-command-to-string command-string)))
-      (progn (message (format "Running: %s" command))
-             (shell-command-to-string command-string)))))
+;; SERVER is a string of the form username@server that specifies a server on which
+;; to run the command."
+;;   ;; Add options from `trapt-utils--apt-options' before
+;;   ;; sending the command to ensure the correct string is returned.
+;;   (let ((command-string (concat
+;;                          command
+;;                          " "
+;;                          (trapt-utils--list-to-string
+;;                           trapt-utils--apt-options))))
+;;     (if server
+;;         (progn (message (format "Running: %s on %s" command server))
+;;                (trapt-utils--run-ssh server
+;;                                      (shell-command-to-string command-string)))
+;;       (progn (message (format "Running: %s" command))
+;;              (shell-command-to-string command-string)))))
 
 (provide 'trapt-utils)
 
