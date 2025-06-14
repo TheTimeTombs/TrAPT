@@ -186,24 +186,24 @@ command using ssh."
         ((listp lst) (mapconcat #'identity lst " "))
         (t (error "Error: Must be a list!"))))
 
-;; (defun trapt-utils--shell-command-to-string (command &optional server)
-;;   "Run shell COMMAND in a shell and return the output as string.
+(defun trapt-utils--shell-command-to-string (command &optional server)
+  "Run shell COMMAND in a shell and return the output as string.
 
-;; SERVER is a string of the form username@server that specifies a server on which
-;; to run the command."
-;;   ;; Add options from `trapt-utils--apt-options' before
-;;   ;; sending the command to ensure the correct string is returned.
-;;   (let ((command-string (concat
-;;                          command
-;;                          " "
-;;                          (trapt-utils--list-to-string
-;;                           trapt-utils--apt-options))))
-;;     (if server
-;;         (progn (message (format "Running: %s on %s" command server))
-;;                (trapt-utils--run-ssh server
-;;                                      (shell-command-to-string command-string)))
-;;       (progn (message (format "Running: %s" command))
-;;              (shell-command-to-string command-string)))))
+SERVER is a string of the form username@server that specifies a server on which
+to run the command."
+  ;; Add options from `trapt-utils--apt-options' before
+  ;; sending the command to ensure the correct string is returned.
+  (let ((command-string (concat
+                         command
+                         " "
+                         (trapt-utils--list-to-string
+                          trapt-utils--apt-options))))
+    (if server
+        (progn (message (format "Running: %s on %s" command server))
+               (trapt-utils--run-ssh server
+                                     (shell-command-to-string command-string)))
+      (progn (message (format "Running: %s" command))
+             (shell-command-to-string command-string)))))
 
 (provide 'trapt-utils)
 
