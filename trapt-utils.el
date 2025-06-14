@@ -30,7 +30,12 @@
 
 ;;; Code:
 
+
 (require 'tablist)
+
+
+(autoload 'trapt-utils--vterm-command "vterm")
+
 
 (defvar trapt-utils--apt-options '("-o \"apt::color=no\"")
   "A list of options to always pass to APT -o.
@@ -130,7 +135,6 @@ string containing the list of arguments to pass."
 
 (defun trapt-utils--vterm-command (command)
   "Opens a new vterm window and insert and execute COMMAND."
-  (require 'vterm)
   (vterm-other-window)
   (vterm-clear)
   (vterm-send-string command)
@@ -143,7 +147,7 @@ If SERVER is a server name of the form username@server, run the
 command using ssh."
   (interactive)
   (if server
-      (clemav-utils--run-ssh server (async-shell-command command))
+      (trapt-utils--run-ssh server (async-shell-command command))
     (async-shell-command command)))
 
 (defun trapt-utils--run-command (command &optional shell server)
