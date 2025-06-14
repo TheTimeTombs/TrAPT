@@ -21,8 +21,9 @@ TrAPT was designed to fit some niche needs:
 
 1. To make it faster and simpler to call APT commands
 2. To be able to view ~apt list~ output in a sortable, serachable, and markable list
-3. To make it easy to export the output of ~apt list~
+3. To make it easy to export the output of ~apt list~ to plain text (Org mode)
 4. To be able to run APT commands on a remote server
+5. To view statistics on your packages
 
 * Features
 
@@ -36,6 +37,11 @@ TrAPT was designed to fit some niche needs:
 + Use ~trapt-exec-find~ in your Emacs configuration to create a report or required executables that your configuration depends on
 + Supports sending commands to eshell or vterm
 + Run APT commands on a remote server
++ View statistics on your packages including:
+  - Number of installed packages
+  - Numer of upgradable packages
+  - Number of residual configuration files
+  - Number of automatically installed packages
 
 * Requirements
 
