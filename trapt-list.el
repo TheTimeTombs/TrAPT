@@ -108,7 +108,7 @@ the sort order."
           (cl-loop for element in apt-list-lines
                    for counter from 1
                    collect (if (= (length element) 4)
-                               `(counter [,@element "none"])
+                               `(,counter [,@element "none"])
                              `(,counter [,@element])))))
     (setf tabulated-list-entries entries )))
 
