@@ -507,94 +507,88 @@ If REMOTE in non-nil, then the user will be prompted for a remote server from
 
 (transient-define-prefix trapt--apt-upgrade-transient ()
   "Transient menu for apt upgrade commands."
-  ["APT Upgrade Commands"
-   ["Info"
-    (:info #'trapt--apt-cache-updated)
-    (:info #'trapt--num-upgradable
-           :if trapt--num-upgradable)]
-   ["Arguments"
-    ("-s" "simulate" "--simulate")
-    ("-y" "assume yes" "--assume-yes")
-    ("-w" "with new packages" "--with-new-pkgs")]
-   ["Run"
-    ("c" "autoclean" trapt-apt-autoclean)
-    ("f" "full upgrade" trapt-apt-full-upgrade)
-    ("u" "update" trapt-apt-update)
-    ("U" "upgrade" trapt-apt-upgrade)]
-   ["Host"
-    ("R" "remote host" "remote")]])
+  ["Info"
+   (:info #'trapt--apt-cache-updated)
+   (:info #'trapt--num-upgradable
+          :if trapt--num-upgradable)]
+  ["Arguments"
+   ("-s" "simulate" "--simulate")
+   ("-y" "assume yes" "--assume-yes")
+   ("-w" "with new packages" "--with-new-pkgs")]
+  ["APT Upgrade/Autoclean"
+   ("c" "autoclean" trapt-apt-autoclean)
+   ("f" "full upgrade" trapt-apt-full-upgrade)
+   ("u" "update" trapt-apt-update)
+   ("U" "upgrade" trapt-apt-upgrade)]
+  ["Host"
+   ("R" "remote host" "remote")])
 
 (transient-define-prefix trapt--apt-install-transient ()
   "Transient menu for apt install command."
+  ["Localhost Info"
+   (:info #'trapt--num-installed
+          :if trapt--num-installed)]
+  ["Arguments"
+   ("-d" "download only" "--download-only")
+   ("-n" "no recommends" "--no-install-recommends")
+   ("-r" "reinstall" "--reinstall")
+   ("-s" "simulate" "--simulate")
+   ("-y" "assume yes" "--assume-yes")]
   ["APT Install"
-   ["Localhost Info"
-    (:info #'trapt--num-installed
-           :if trapt--num-installed)]
-   ["Arguments"
-    ("-d" "download only" "--download-only")
-    ("-n" "no recommends" "--no-install-recommends")
-    ("-r" "reinstall" "--reinstall")
-    ("-s" "simulate" "--simulate")
-    ("-y" "assume yes" "--assume-yes")]
-   ["Run"
-    ("i" "install" trapt-apt-install)]
-   ["Host"
-    ("R" "remote host" "remote")]])
+   ("i" "install" trapt-apt-install)]
+  ["Host"
+   ("R" "remote host" "remote")])
 
 (transient-define-prefix trapt--apt-remove-transient ()
   "Transient menu for apt remove commands."
+  ["Arguments"
+   ("-s" "simlulate" "--simulate")
+   ("-y" "assume yes" "--assume-yes")]
   ["APT Removal Commands"
-   ["Arguments"
-    ("-s" "simlulate" "--simulate")
-    ("-y" "assume yes" "--assume-yes")]
-   ["Run"
-    ("a" "autoremove" trapt-apt-autoremove)
-    ("p" "purge" trapt-apt-purge)
-    ("r" "remove" trapt-apt-remove)]
-   ["Host"
-    ("R" "remote host" "remote")]])
+   ("a" "autoremove" trapt-apt-autoremove)
+   ("p" "purge" trapt-apt-purge)
+   ("r" "remove" trapt-apt-remove)]
+  ["Host"
+   ("R" "remote host" "remote")])
 
 (transient-define-prefix trapt--apt-other-transient ()
   "Transient menu for apt package manager."
   ["APT Package Manager"
-   ["Other Commands"
-    ("e" "edit sources" trapt-apt-edit-sources)
-    ("m" "moo" trapt-apt-moo)
-    ("s" "show" trapt-apt-show)]
-   ["Host"
-    ("R" "remote host" "remote")]])
+   ("e" "edit sources" trapt-apt-edit-sources)
+   ("m" "moo" trapt-apt-moo)
+   ("s" "show" trapt-apt-show)]
+  ["Host"
+   ("R" "remote host" "remote")])
 
 (transient-define-prefix trapt--apt-list-transient ()
   "Transient menu for apt list command."
+  ["Arguments"
+   ("-a" "all versions" "--all-versions")
+   ("-i" "installed" "--installed")
+   ("-u" "upgradable" "--upgradable")]
   ["APT List"
-   ["Arguments"
-    ("-a" "all versions" "--all-versions")
-    ("-i" "installed" "--installed")
-    ("-u" "upgradable" "--upgradable")]
-   ["Run"
-    ("l" "list" trapt-apt-list)]
-   ["Host"
-    ("R" "remote host" "remote")]])
+   ("l" "list" trapt-apt-list)]
+  ["Host"
+   ("R" "remote host" "remote")])
 
 ;;;###autoload (autoload 'trapt "trapt.el" "A transient menu for APT." t)
 (transient-define-prefix trapt ()
   "Transient menu for apt package manager."
+  ["Localhost Info"
+   (:info #'trapt--num-installed
+          :if trapt--num-installed)
+   (:info #'trapt--num-automatic
+          :if trapt--num-automatic)
+   (:info #'trapt--num-upgradable
+          :if trapt--num-upgradable)
+   (:info #'trapt--num-residual
+          :if trapt--num-residual)]
   ["APT Package Manager"
-   ["Localhost Info"
-    (:info #'trapt--num-installed
-           :if trapt--num-installed)
-    (:info #'trapt--num-automatic
-           :if trapt--num-automatic)
-    (:info #'trapt--num-upgradable
-           :if trapt--num-upgradable)
-    (:info #'trapt--num-residual
-           :if trapt--num-residual)]
-   ["Submenus"
-    ("i" "install packages" trapt--apt-install-transient)
-    ("l" "list packages" trapt--apt-list-transient)
-    ("o" "other commands" trapt--apt-other-transient)
-    ("r" "remove/purge packages" trapt--apt-remove-transient)
-    ("u" "update/upgrade/autoclean" trapt--apt-upgrade-transient)]])
+   ("i" "install packages" trapt--apt-install-transient)
+   ("l" "list packages" trapt--apt-list-transient)
+   ("o" "other commands" trapt--apt-other-transient)
+   ("r" "remove/purge packages" trapt--apt-remove-transient)
+   ("u" "update/upgrade/autoclean" trapt--apt-upgrade-transient)])
 
 ;; Load saved statistics after package load
 (eval-after-load "trapt.el" (trapt--load-stats))
