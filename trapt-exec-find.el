@@ -109,10 +109,7 @@ manager.")
 
 (defun trapt-exec-find--progpath (program)
   "Return the program path for PROGRAM or return `not found'."
-  (let ((path (executable-find program)))
-    (if path
-        (propertize path 'font-lock-face 'font-lock-string-face)
-      (propertize "not found" 'font-lock-face 'font-lock-warning-face))))
+  (trapt-exec-find--propertize (or (executable-find program) "not found")))
 
 (defun trapt-exec-find--create-tablist-entry-list ()
   "Pass `trapt-exec-find-list' and add them to `tabulated-list-entries'.
@@ -148,14 +145,8 @@ Additionally, determine the execuable paths for each executable and pass them to
 (cl-defun trapt-exec-find (command-string
                            &key
                            pkg-name
-                           (version (propertize
-                                     "not specified"
-                                     'font-lock-face
-                                     'font-lock-comment-face))
-                           (pkg-mgr (propertize
-                                     "not specified"
-                                     'font-lock-face
-                                     'font-lock-comment-face)))
+                           (version "not specified")
+                           (pkg-mgr "not specified"))
   "Extract an executable name from a COMMAND-STRING.
 The value is stored it in`trap-exec--find-list'. The original COMMAND-STRING
 will be returned.
@@ -169,13 +160,25 @@ this is for reference purposes only.
 PKG-MGR is an optional string containg the name of the package manager used to
 manage this package. Currently, this if for reference purposes only."
   (let* ((program (file-name-nondirectory (car (split-string command-string))))
-         (pkg-name (or pkg-name program)))
+         (pkg-name (or pkg-name program))
+         (version (trapt-exec-find--propertize version))
+         (pkg-mgr (trapt-exec-find--propertize pkg-mgr))
+         (proglist (cl-loop for elt in trapt-exec-find--list
+                            collect (car elt))))
     (when (stringp program)
-      (unless (member program (cl-loop for elt in trapt-exec-find--list
-                                       collect (car elt)))
-        (push `(,pkg-name ,program ,version ,pkg-mgr ,load-file-name)
+      (unless (member program proglist)
+        (push `(,pkg-name ,program ,version ,pkg-mgr ,(or load-file-name "no specified"))
               trapt-exec-find--list))))
   command-string)
+
+(defun trapt-exec-find--propertize (string)
+  "Take STRING and return a propertized string based on string text."
+  (cond ((string= string "not specified")
+         (propertize string 'font-lock-face 'font-lock-comment-face))
+        ((string= string "not found")
+         (propertize string 'font-lock-face 'font-lock-warning-face))
+        (t
+         (propertize string 'font-lock-face 'font-lock-string-face))))
 
 ;;;###autoload
 (defun trapt-exec-find-report ()
