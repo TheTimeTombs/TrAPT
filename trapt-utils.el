@@ -158,7 +158,7 @@ COMMAND will be run using that shell mode.
 
 If SERVER is in the form username@servername, then the APT command will be run
 on that corresponding remote server."
-  (message (format "Running: %s" command))
+  (message "Running: %s" command)
   (cond ((string= shell "vterm")
          (trapt-utils--vterm-exec command server))
         ((string= shell "eshell")
@@ -203,10 +203,10 @@ to run the command."
                          (trapt-utils--list-to-string
                           trapt-utils--apt-options))))
     (if server
-        (progn (message (format "Running: %s on %s" command server))
+        (progn (message "Running: %s on %s" command server)
                (trapt-utils--run-ssh server
                                      (shell-command-to-string command-string)))
-      (progn (message (format "Running: %s" command))
+      (progn (message "Running: %s" command)
              (shell-command-to-string command-string)))))
 
 (provide 'trapt-utils)
