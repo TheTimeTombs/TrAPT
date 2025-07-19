@@ -98,16 +98,15 @@ by the variable `trapt-list-org-export-format'."
   (let ((entries (tablist-get-marked-items)))
     (trapt-utils--check-mode
      trapt-list--mode-name
-     (progn
-       (trapt-org--init-buffer)
-       (cl-loop for item in entries
-                do (insert (format trapt-org-export-format
-                                   (aref (cdr item) 0)
-                                   (trapt-org--status-to-tags
-                                    (aref (cdr item) 4))
-                                   (aref (cdr item) 2)
-                                   (aref (cdr item) 3))))
-       (org-mode-restart)))))
+     (cl-loop for item in entries
+              initially (trapt-org--init-buffer)
+              do (insert (format trapt-org-export-format
+                                 (aref (cdr item) 0)
+                                 (trapt-org--status-to-tags
+                                  (aref (cdr item) 4))
+                                 (aref (cdr item) 2)
+                                 (aref (cdr item) 3)))
+              finally (org-mode-restart)))))
 
 (defun trapt-org-export-all ()
   "Export all items from the APT List buffer to Org mode.
@@ -117,16 +116,15 @@ by the variable `trapt-list-org-export-format'."
   (let ((entries tabulated-list-entries))
     (trapt-utils--check-mode
      trapt-list--mode-name
-     (progn
-       (trapt-org--init-buffer)
-       (cl-loop for item in entries
-                do (insert (format trapt-org-export-format
-                                   (aref (cadr item) 0)
-                                   (trapt-org--status-to-tags
-                                    (aref (cadr item) 4))
-                                   (aref (cadr item) 2)
-                                   (aref (cadr item) 3))))
-       (org-mode-restart)))))
+     (cl-loop for item in entries
+              initially (trapt-org--init-buffer)
+              do (insert (format trapt-org-export-format
+                                 (aref (cadr item) 0)
+                                 (trapt-org--status-to-tags
+                                  (aref (cadr item) 4))
+                                 (aref (cadr item) 2)
+                                 (aref (cadr item) 3)))
+              finally (org-mode-restart)))))
 
 (defun trapt-org--generate-custom-todos ()
   "Generate custom TODO header for trapt exported Org mode files."
