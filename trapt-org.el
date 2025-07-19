@@ -130,13 +130,9 @@ by the variable `trapt-list-org-export-format'."
 
 (defun trapt-org--generate-custom-todos ()
   "Generate custom TODO header for trapt exported Org mode files."
-  (mapconcat #'identity `("#+TODO:"
-                          ,(mapconcat #'cdr
-                                      trapt-org-todo-keywords
-                                      " ")
-                          "|"
-                          ,trapt-org-done-keyword)
-             " "))
+  (format "#+TODO: %s | %s"
+          (mapconcat #'cdr trapt-org-todo-keywords " ")
+          trapt-org-done-keyword))
 
 ;;;###autoload
 (defun trapt-org-execute ()
