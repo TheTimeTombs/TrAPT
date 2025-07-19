@@ -66,12 +66,17 @@ If not, an error will be thrown."
      (with-connection-local-variables
       ,body)))
 
-(defun trapt-utils--set-stats (stats-list)
-  "Set satistics in STATS-LIST.
+(defun trapt-utils--set-save-stats (stats-list)
+  "Set satistics in STATS-LIST and save to file.
 
 STATS-LIST must of a list in the form of ((var1 . value1)...)."
-  (cl-loop for element in stats-list
-           do (set `,(car element) (cdr element))))
+  (with-temp-file trapt-stats-file
+    (insert (format "%s"
+                    (cl-loop for element in stats-list
+                             do (setf varname (car element))
+                             (setf variable-value (cdr element))
+                             (set `,varname variable-value)
+                             collect `(,varname . ,variable-value))))))
 
 (defun trapt-utils--save-stats ()
   "Save TrAPT statistics to a file."
