@@ -81,52 +81,52 @@ STATUS is a string from the status column of APT list."
   "Return the heading from the current Org heading."
   (nth 4 (org-heading-components)))
 
-(defun trapt-org--export (entries)
-  "Exports entries from APT List buffer to Org.
-
-ENTRIES is a list of items from a tablist buffer."
-  (trapt-utils--check-mode
-   trapt-list--mode-name
-   (progn
-     (switch-to-buffer (generate-new-buffer
-                        trapt-org--buffer-name))
-     (org-mode)
-     (org-export-insert-default-template 'default)
-     (insert (concat (trapt-org--generate-custom-todos)
-                     "\n\n"))
-     (cl-loop  for item in entries
-               do (insert 
-                   (if (eq (type-of item) 'cons)
-                       ;; List of cons from `tablist-get-marked-items'
-                       (format trapt-org-export-format
-                               (aref (cdr item) 0)
-                               (trapt-org--status-to-tags
-                                (aref (cdr item) 4))
-                               (aref (cdr item) 2)
-                               (aref (cdr item) 3))
-                     ;; List from `tabulated-list-entries'
-                     (format trapt-org-export-format
-                             (aref (cadr item) 0)
-                             (trapt-org--status-to-tags
-                              (aref (cadr item) 4))
-                             (aref (cadr item) 2)
-                             (aref (cadr item) 3)))))
-     ;; Restart org mode to load TODO states
-     (org-mode-restart))))
+(defun trapt-org--init-buffer ()
+  "Create a new Org buffer and add the default header."
+  (switch-to-buffer (generate-new-buffer
+                     trapt-org--buffer-name))
+  (org-mode)
+  (org-export-insert-default-template 'default)
+  (insert (concat (trapt-org--generate-custom-todos)
+                  "\n\n")))
 
 (defun trapt-org-export-marked ()
   "Export all marked items from the APT List buffer to Org mode.
 The format of the Org entries the output format for the org mode is determined
 by the variable `trapt-list-org-export-format'."
   (interactive)
-  (trapt-org--export (tablist-get-marked-items)))
+  (let ((entries (tablist-get-marked-items)))
+    (trapt-utils--check-mode
+     trapt-list--mode-name
+     (progn
+       (trapt-org--init-buffer)
+       (cl-loop for item in entries
+                do (insert (format trapt-org-export-format
+                                   (aref (cdr item) 0)
+                                   (trapt-org--status-to-tags
+                                    (aref (cdr item) 4))
+                                   (aref (cdr item) 2)
+                                   (aref (cdr item) 3))))
+       (org-mode-restart)))))
 
 (defun trapt-org-export-all ()
   "Export all items from the APT List buffer to Org mode.
 The format of the Org entries the output format for the org mode is determined
 by the variable `trapt-list-org-export-format'."
   (interactive)
-  (trapt-org--export tabulated-list-entries))
+  (let ((entries tabulated-list-entries))
+    (trapt-utils--check-mode
+     trapt-list--mode-name
+     (progn
+       (trapt-org--init-buffer)
+       (cl-loop for item in entries
+                do (insert (format trapt-org-export-format
+                                   (aref (cadr item) 0)
+                                   (trapt-org--status-to-tags
+                                    (aref (cadr item) 4))
+                                   (aref (cadr item) 2)
+                                   (aref (cadr item) 3))))
+       (org-mode-restart)))))
 
 (defun trapt-org--generate-custom-todos ()
   "Generate custom TODO header for trapt exported Org mode files."
