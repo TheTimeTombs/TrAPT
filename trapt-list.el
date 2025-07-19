@@ -89,6 +89,8 @@ the sort order."
 
 (defvar trapt-list--num-auto-intalled nil)
 
+(defvar trapt-list--entries nil)
+
 (easy-menu-define trapt-list-mode-menu trapt-list-mode-map
   "Menu when `trapt-list-mode' is active."
   `("TrAPT List"
@@ -110,32 +112,31 @@ the sort order."
                    collect (if (= (length element) 4)
                                `(,counter [,@element "none"])
                              `(,counter [,@element])))))
-    (setf tabulated-list-entries entries )))
+    (setf trapt-list--entries entries)))
 
 (defun trapt-list--update-stats ()
-  "docstring"
-  ;; Collect stats for reference
-  (let ((result
-         (cl-loop for element in tabulated-list-entries
-                  when  (string-match "upgradable" (aref (cadr element) 4))
-                  count element into num-upgradable
-                  when (string-match "installed" (aref (cadr element) 4))
-                  count element into num-installed
-                  when (string-match "residual-config" (aref (cadr element) 4))
-                  count element into num-residual
-                  when (string-match "automatic" (aref (cadr element) 4))
-                  count element into num-auto
-                  finally
-                  return
-                  (if (not (string-match "--upgradable" trapt-list--current-command))
-                      (cl-values `(trapt-list--num-installed . ,num-installed)
-                                 `(trapt-list--num-upgradable . ,num-upgradable)
-                                 `(trapt-list--num-residual . ,num-residual)
-                                 `(trapt-list--num-auto-installed . ,num-auto))
-                    ;; Only update upgradable stat if that list is called
-                    (cl-values`(trapt-list--num-upgradable . ,num-upgradable))))))
-    (trapt-utils--set-stats result)
-    (trapt-utils--save-stats)))
+  "Return a list of statistics from APT list."
+  (thread-last
+    (cl-loop for element in tabulated-list-entries
+             when  (string-match "upgradable" (aref (cadr element) 4))
+             count element into num-upgradable
+             when (string-match "installed" (aref (cadr element) 4))
+             count element into num-installed
+             when (string-match "residual-config" (aref (cadr element) 4))
+             count element into num-residual
+             when (string-match "automatic" (aref (cadr element) 4))
+             count element into num-auto
+             finally
+             return
+             (if (not (string-match "--upgradable" trapt-list--current-command))
+                 (cl-values `(trapt-list--num-installed . ,num-installed)
+                            `(trapt-list--num-upgradable . ,num-upgradable)
+                            `(trapt-list--num-residual . ,num-residual)
+                            `(trapt-list--num-auto-installed . ,num-auto))
+               ;; Only update upgradable stat if that list is called
+               (cl-values`(trapt-list--num-upgradable . ,num-upgradable))))
+    (trapt-utils--set-save-stats)))
+;;;    (trapt-utils--save-stats)))
 
 (defun trapt-list--process-lines (apt-list-output)
   "Splits the output of APT-LIST-OUTPUT."
@@ -171,6 +172,7 @@ The tablist buffer is populated with entries from APT-LIST-OUTPUT."
                                  ("Status" 50 t (:right-align t))])
     (tabulated-list-init-header)
     (trapt-list--create-tablist-entry-list apt-list-output)
+    (setf tabulated-list-entries trapt-list--entries)
     (revert-buffer))
   (switch-to-buffer buffer-name))
 
