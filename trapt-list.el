@@ -114,7 +114,7 @@ the sort order."
                              `(,counter [,@element])))))
     (setf trapt-list--entries entries)))
 
-(defun trapt-list--update-stats ()
+(defun trapt-list--get-stats ()
   "Return a list of statistics from APT list."
   (thread-last
     (cl-loop for element in tabulated-list-entries
@@ -136,7 +136,6 @@ the sort order."
                ;; Only update upgradable stat if that list is called
                (cl-values`(trapt-list--num-upgradable . ,num-upgradable))))
     (trapt-utils--set-save-stats)))
-;;;    (trapt-utils--save-stats)))
 
 (defun trapt-list--process-lines (apt-list-output)
   "Splits the output of APT-LIST-OUTPUT."

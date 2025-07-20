@@ -194,7 +194,7 @@ If SUDO is non-nil, then the command will be run with sudo."
     (cond ((string= operation "list")
            (trapt-list--create-tablist command server)
            (when (or (not packages) (string= packages ""))
-             (trapt-list--update-stats)))
+             (trapt-list--get-stats)))
           ((string= operation "show")
            (trapt-utils--shell-command-to-string command))
           (t
