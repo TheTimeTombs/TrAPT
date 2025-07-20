@@ -78,14 +78,6 @@ STATS-LIST must of a list in the form of ((var1 . value1)...)."
                              (set `,varname variable-value)
                              collect `(,varname . ,variable-value))))))
 
-(defun trapt-utils--save-stats ()
-  "Save TrAPT statistics to a file."
-  (let ((save-list
-         (cl-loop for varname in trapt-utils--persistent-stats
-                  collect `(,varname . ,(eval varname)))))
-    (with-temp-file trapt-stats-file
-      (insert (format "%s" save-list)))))
-
 (defun trapt-utils--read-file (filepath)
   "Read contents from FILEPATH."
   (with-temp-buffer
