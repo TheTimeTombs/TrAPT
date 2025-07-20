@@ -88,15 +88,20 @@ the sort order."
 (defvar trapt-list--mode-name "TrAPT List"
   "The name of `trapt-list-mode' buffer.")
 
-(defvar trapt-list--num-installed nil)
+(defvar trapt-list--num-installed nil
+  "The number of installed APT packages.")
 
-(defvar trapt-list--num-upgradable nil)
+(defvar trapt-list--num-upgradable nil
+  "The number of upgradable APT packages.")
 
-(defvar trapt-list--num-residual nil)
+(defvar trapt-list--num-residual nil
+  "The number of APT packages with residual data.")
 
-(defvar trapt-list--num-auto-intalled nil)
+(defvar trapt-list--num-auto-intalled nil
+  "The number of automatically installed APT packages.")
 
-(defvar trapt-list--entries nil)
+(defvar trapt-list--entries nil
+  "A list of all the APT List entries for `tabulated-list-entries'.")
 
 (easy-menu-define trapt-list-mode-menu trapt-list-mode-map
   "Menu when `trapt-list-mode' is active."
@@ -133,7 +138,7 @@ the sort order."
                (cl-values`(trapt-list--num-upgradable . ,num-upgradable))))
     (trapt-utils--set-save-stats)))
 
-(defun trapt-list--create-tablist (&optional command server)
+(defun trapt-list--create-tablist (command command server)
   "Call `trapt-list--apt-list-to-tablist' and create a tablist buffer.
 
 The buffer contains the result of `apt list' run from in an inferior shell.
@@ -142,42 +147,41 @@ COMMAND must be a string with the form `sudo apt list [arguments]'.
 
 SERVER is a string of the form username@server that specifies a server on which
 to run the command."
-  (setf trapt-list--current-command command)
+  (cl-labels
+      ((add-trapt-list--buffer-name-to-trapt-list--tablist-buffers ()
+         "Add `trapt-list--buffer-name' to `trapt--tablist-buffers'."
+         (when (boundp 'trapt--tablist-buffers)
+           (if trapt--tablist-buffers
+               (add-to-list 'trapt--tablist-buffers
+                            trapt-list--buffer-name)
+             (push trapt-list--buffer-name trapt--tablist-buffers))))
+       
+       (remove-unwanted-lines (apt-lines-list)
+         "Remove unwanted messages from APT-LINES-LIST."
+         (cl-remove-if (lambda (item)
+                         (or (string-empty-p item)
+                             (string-prefix-p "N:" item)
+                             (string-prefix-p "WARNING:" item)
+                             (string-prefix-p "Listing" item)
+                             (string-prefix-p "Listing..." item)))
+                       apt-lines-list))
+       
+       (apt-output-to-list (apt-output)
+         "Split APT-OUTPUT string to a list and removed unwanted lines."
+         (thread-last
+           (split-string apt-output "\n")
+           (remove-unwanted-lines)
+           (mapcar #'(lambda (item) (split-string item  "[ /]")))))
+       
+       (lines-to-entries (apt-output-list)
+         "Convert each line from APT-LINES list to an entry"
+         (cl-loop for line in apt-output-list
+                  for counter from 1
+                  collect (if (= (length line) 4)
+                              `(,counter [,@line "none"])
+                            `(,counter [,@line])))))
 
-  ;; Define child functions
-  (cl-labels ((add-trapt-list--buffer-name-to-trapt-list--tablist-buffers ()
-                "Add `trapt-list--buffer-name' to `trapt--tablist-buffers'."
-                (when (boundp 'trapt--tablist-buffers)
-                  (if trapt--tablist-buffers
-                      (add-to-list 'trapt--tablist-buffers
-                                   trapt-list--buffer-name)
-                    (push trapt-list--buffer-name trapt--tablist-buffers))))
-              
-              (remove-unwanted-lines (apt-lines-list)
-                "Remove unwanted messages from APT-LINES-LIST."
-                (cl-remove-if (lambda (item)
-                                (or (string-empty-p item)
-                                    (string-prefix-p "N:" item)
-                                    (string-prefix-p "WARNING:" item)
-                                    (string-prefix-p "Listing" item)
-                                    (string-prefix-p "Listing..." item)))
-                              apt-lines-list))
-              
-              (apt-output-to-list (apt-output)
-                "Split APT-OUTPUT string to a list and removed unwanted lines."
-                (thread-last
-                  (split-string apt-output "\n")
-                  (remove-unwanted-lines)
-                  (mapcar #'(lambda (item) (split-string item  "[ /]")))))
-              
-              (lines-to-entries (apt-output-list)
-                "Convert each line from APT-LINES list to an entry"
-                (cl-loop for line in apt-output-list
-                         for counter from 1
-                         collect (if (= (length line) 4)
-                                     `(,counter [,@line "none"])
-                                   `(,counter [,@line])))))
-
+    (setf trapt-list--current-command command)
     (with-current-buffer (get-buffer-create trapt-list--buffer-name)
       (trapt-list-mode)
       (add-trapt-list--buffer-name-to-trapt-list--tablist-buffers)
