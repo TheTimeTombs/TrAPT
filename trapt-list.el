@@ -63,6 +63,13 @@ the sort order."
 (defvar trapt-list--current-command nil
   "The command used to generate the current list.")
 
+(defvar trapt-list--tabulated-list-format [("Name" 30 t)
+                                           ("Source" 25 t)
+                                           ("Version" 15 t)
+                                           ("Architecture" 8 t)
+                                           ("Status" 50 t (:right-align t))]
+  "The `tabulated-list-format' for TrAPT List buffers.")
+
 (defvar trapt-list-mode-map
   (let ((map (make-sparse-keymap)))
     (when (fboundp #'trapt)
@@ -103,17 +110,6 @@ the sort order."
     ["Reinstall selected packages" trapt-apt-remove
      :help "Remove selected packages with APT."]))
 
-(defun trapt-list--create-tablist-entry-list (apt-list-output)
-  "Take a list from APT-LIST-OUTPUT and add them to `tabulated-list-entries'."
-  (let* ((apt-list-lines (trapt-list--process-lines apt-list-output))
-         (entries
-          (cl-loop for element in apt-list-lines
-                   for counter from 1
-                   collect (if (= (length element) 4)
-                               `(,counter [,@element "none"])
-                             `(,counter [,@element])))))
-    (setf trapt-list--entries entries)))
-
 (defun trapt-list--get-stats ()
   "Return a list of statistics from APT list."
   (thread-last
@@ -137,45 +133,7 @@ the sort order."
                (cl-values`(trapt-list--num-upgradable . ,num-upgradable))))
     (trapt-utils--set-save-stats)))
 
-(defun trapt-list--process-lines (apt-list-output)
-  "Splits the output of APT-LIST-OUTPUT."
-  (let ((apt-list-entries (mapcar (lambda (line) (split-string line "[ /]"))
-                                  (trapt-list--apt-list-split-lines
-                                   apt-list-output))))
-    apt-list-entries))
-
-(defun trapt-list--apt-list-split-lines (apt-list-output)
-  "Split APT-LIST-OUTPUT lines while removing unwanted lines."
-  (cl-remove-if (lambda (item)
-                  (or (string-empty-p item)
-                      (string-prefix-p "N:" item)
-                      (string-prefix-p "WARNING:" item)
-                      (string-prefix-p "Listing" item)
-                      (string-prefix-p "Listing..." item)))
-                (split-string apt-list-output "\n")))
-
-(defun trapt-list--apt-list-to-tablist (buffer-name apt-list-output)
-  "Create a tablist buffer with name BUFFER-NAME.
-The tablist buffer is populated with entries from APT-LIST-OUTPUT."
-  (with-current-buffer (get-buffer-create buffer-name)
-    (trapt-list-mode)
-    (when (boundp 'trapt--tablist-buffers)
-      (if trapt--tablist-buffers
-          (add-to-list 'trapt--tablist-buffers trapt-list--buffer-name)
-        (push trapt-list--buffer-name trapt--tablist-buffers)))
-    (setf tabulated-list-sort-key trapt-list-default-sort-key)
-    (setf tabulated-list-format [("Name" 30 t)
-                                 ("Source" 25 t)
-                                 ("Version" 15 t)
-                                 ("Architecture" 8 t)
-                                 ("Status" 50 t (:right-align t))])
-    (tabulated-list-init-header)
-    (trapt-list--create-tablist-entry-list apt-list-output)
-    (setf tabulated-list-entries trapt-list--entries)
-    (revert-buffer))
-  (switch-to-buffer buffer-name))
-
-(defun trapt-list--create-tablist (command &optional server)
+(defun trapt-list--create-tablist (&optional command server)
   "Call `trapt-list--apt-list-to-tablist' and create a tablist buffer.
 
 The buffer contains the result of `apt list' run from in an inferior shell.
@@ -184,9 +142,56 @@ COMMAND must be a string with the form `sudo apt list [arguments]'.
 
 SERVER is a string of the form username@server that specifies a server on which
 to run the command."
-  (let ((apt-output (trapt-utils--shell-command-to-string command server)))
-    (setf trapt-list--current-command command)
-    (trapt-list--apt-list-to-tablist trapt-list--buffer-name apt-output)))
+  (setf trapt-list--current-command command)
+
+  ;; Define child functions
+  (cl-labels ((add-trapt-list--buffer-name-to-trapt-list--tablist-buffers ()
+                "Add `trapt-list--buffer-name' to `trapt--tablist-buffers'."
+                (when (boundp 'trapt--tablist-buffers)
+                  (if trapt--tablist-buffers
+                      (add-to-list 'trapt--tablist-buffers
+                                   trapt-list--buffer-name)
+                    (push trapt-list--buffer-name trapt--tablist-buffers))))
+              
+              (remove-unwanted-lines (apt-lines-list)
+                "Remove unwanted messages from APT-LINES-LIST."
+                (cl-remove-if (lambda (item)
+                                (or (string-empty-p item)
+                                    (string-prefix-p "N:" item)
+                                    (string-prefix-p "WARNING:" item)
+                                    (string-prefix-p "Listing" item)
+                                    (string-prefix-p "Listing..." item)))
+                              apt-lines-list))
+              
+              (apt-output-to-list (apt-output)
+                "Split APT-OUTPUT string to a list and removed unwanted lines."
+                (thread-last
+                  (split-string apt-output "\n")
+                  (remove-unwanted-lines)
+                  (mapcar #'(lambda (item) (split-string item  "[ /]")))))
+              
+              (lines-to-entries (apt-output-list)
+                "Convert each line from APT-LINES list to an entry"
+                (cl-loop for line in apt-output-list
+                         for counter from 1
+                         collect (if (= (length line) 4)
+                                     `(,counter [,@line "none"])
+                                   `(,counter [,@line])))))
+
+    (with-current-buffer (get-buffer-create trapt-list--buffer-name)
+      (trapt-list-mode)
+      (add-trapt-list--buffer-name-to-trapt-list--tablist-buffers)
+      (setf tabulated-list-format trapt-list--tabulated-list-format)
+      (setf tabulated-list-sort-key trapt-list-default-sort-key)
+      (tabulated-list-init-header)
+      (thread-last
+        (trapt-utils--shell-command-to-string command server)
+        (apt-output-to-list)
+        (lines-to-entries)
+        (setf trapt-list--entries)
+        (setf tabulated-list-entries))
+      (revert-buffer))
+    (switch-to-buffer trapt-list--buffer-name)))
 
 ;;;###autoload
 (define-derived-mode trapt-list-mode tabulated-list-mode trapt-list--mode-name
