@@ -138,7 +138,7 @@ the sort order."
                (cl-values`(trapt-list--num-upgradable . ,num-upgradable))))
     (trapt-utils--set-save-stats)))
 
-(defun trapt-list--create-tablist (command command server)
+(defun trapt-list--create-tablist (command &optional server)
   "Call `trapt-list--apt-list-to-tablist' and create a tablist buffer.
 
 The buffer contains the result of `apt list' run from in an inferior shell.
