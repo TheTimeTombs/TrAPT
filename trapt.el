@@ -26,7 +26,7 @@
 
 ;;; Commentary:
 
-;; commentary
+;; Use transient menus to interact with the APT package manager.
 
 ;;; Code:
 
@@ -512,9 +512,9 @@ If REMOTE in non-nil, then the user will be prompted for a remote server from
    (:info #'trapt--num-upgradable
           :if trapt--num-upgradable)]
   ["Arguments"
-   ("-s" "simulate" "--simulate")
-   ("-y" "assume yes" "--assume-yes")
-   ("-w" "with new packages" "--with-new-pkgs")]
+   ("s" "simulate" "--simulate")
+   ("y" "assume yes" "--assume-yes")
+   ("w" "with new packages" "--with-new-pkgs")]
   ["APT Upgrade/Autoclean"
    ("c" "autoclean" trapt-apt-autoclean)
    ("f" "full upgrade" trapt-apt-full-upgrade)
@@ -529,11 +529,11 @@ If REMOTE in non-nil, then the user will be prompted for a remote server from
    (:info #'trapt--num-installed
           :if trapt--num-installed)]
   ["Arguments"
-   ("-d" "download only" "--download-only")
-   ("-n" "no recommends" "--no-install-recommends")
-   ("-r" "reinstall" "--reinstall")
-   ("-s" "simulate" "--simulate")
-   ("-y" "assume yes" "--assume-yes")]
+   ("d" "download only" "--download-only")
+   ("n" "no recommends" "--no-install-recommends")
+   ("r" "reinstall" "--reinstall")
+   ("s" "simulate" "--simulate")
+   ("y" "assume yes" "--assume-yes")]
   ["APT Install"
    ("i" "install" trapt-apt-install)]
   ["Host"
@@ -542,8 +542,8 @@ If REMOTE in non-nil, then the user will be prompted for a remote server from
 (transient-define-prefix trapt--apt-remove-transient ()
   "Transient menu for apt remove commands."
   ["Arguments"
-   ("-s" "simlulate" "--simulate")
-   ("-y" "assume yes" "--assume-yes")]
+   ("s" "simlulate" "--simulate")
+   ("y" "assume yes" "--assume-yes")]
   ["APT Removal Commands"
    ("a" "autoremove" trapt-apt-autoremove)
    ("p" "purge" trapt-apt-purge)
@@ -563,9 +563,9 @@ If REMOTE in non-nil, then the user will be prompted for a remote server from
 (transient-define-prefix trapt--apt-list-transient ()
   "Transient menu for apt list command."
   ["Arguments"
-   ("-a" "all versions" "--all-versions")
-   ("-i" "installed" "--installed")
-   ("-u" "upgradable" "--upgradable")]
+   ("a" "all versions" "--all-versions")
+   ("i" "installed" "--installed")
+   ("u" "upgradable" "--upgradable")]
   ["APT List"
    ("l" "list" trapt-apt-list)]
   ["Host"
