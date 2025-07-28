@@ -50,7 +50,7 @@ the form username@server."
   :group 'trapt)
 
 (defcustom trapt-stats-file "~/.emacs.d/trapt-stats.eld"
-  "A string with the path to the TrAPT statisics file."
+  "A string with the path to the TrAPT statistics file."
   :type '(string)
   :group 'trapt)
 
@@ -78,13 +78,13 @@ the form username@server."
     (format "installed packages: %s" trapt-list--num-installed)))
 
 (defun trapt--num-upgradable ()
-  "Return a string showing the number of ugradable packages."
+  "Return a string showing the number of upgradable packages."
   (when (and (bound-and-true-p trapt-list--num-upgradable)
              (> trapt-list--num-upgradable 0))
     (format "upgradable packages: %s" trapt-list--num-upgradable)))
 
 (defun trapt--num-residual ()
-  "Return a string showing the number of ugradable packages."
+  "Return a string showing the number of upgradable packages."
   (when (and (bound-and-true-p trapt-list--num-residual)
              (> trapt-list--num-residual 0))
     (format "residual configs: %s" trapt-list--num-residual)))
@@ -105,7 +105,7 @@ the form username@server."
   "Wrapper function for `trapt--get-server'.
 
 If the current function was called by a transient menu, call `trapt--get-server'
-while passing a non-nil value if `remote' is in the list of tranisent aruments
+while passing a non-nil value if `remote' is in the list of transient arguments
 as determined by `tranisent-args'
 
 Otherwise call `trapt--get-server' passing the value REMOTE."
@@ -133,7 +133,7 @@ Otherwise call `trapt--get-server' passing the value REMOTE."
     nil))
 
 (defun trapt--get-marked-packages (packages)
-  "Return a list of pacakges from a buffer in `trapt--tablist-buffers'.
+  "Return a list of packages from a buffer in `trapt--tablist-buffers'.
 
 If the current buffer name is not in `trapt--trablist-buffers', return
 PACKAGES."
@@ -144,7 +144,7 @@ PACKAGES."
     packages))
 
 (defun trapt--apt-cache-updated ()
-  "Return a string showng the last update to APT cache."
+  "Return a string showing the last update to APT cache."
   (format "Updated: %s"
           (substring (shell-command-to-string "stat -c %y /var/cache/apt/")
                      0
@@ -542,7 +542,7 @@ If REMOTE in non-nil, then the user will be prompted for a remote server from
 (transient-define-prefix trapt--apt-remove-transient ()
   "Transient menu for apt remove commands."
   ["Arguments"
-   ("s" "simlulate" "--simulate")
+   ("s" "simulate" "--simulate")
    ("y" "assume yes" "--assume-yes")]
   ["APT Removal Commands"
    ("a" "autoremove" trapt-apt-autoremove)
