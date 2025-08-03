@@ -59,10 +59,10 @@ If not, an error will be thrown."
        ,body
      (error (format "Error: Function must be called from %s mode." ,mode))))
 
-(defmacro trapt-utils--run-ssh (server body)
-  "Run BODY with tramp on SERVER using ssh."
+(defmacro trapt-utils--run-ssh (host body)
+  "Run BODY with tramp on HOST using ssh."
   `(let* ((default-directory (expand-file-name
-                              (format "/ssh:%s:~/" ,server))))
+                              (format "/ssh:%s:~/" ,host))))
      (with-connection-local-variables
       ,body)))
 
@@ -83,6 +83,16 @@ STATS-LIST must of a list in the form of ((var1 . value1)...)."
   (with-temp-buffer
     (insert-file-contents filepath)
     (read (buffer-string))))
+
+(defun trapt--remotehost-p (test-string)
+  "Return TEST-STRING if it refers to a remote host, otherwise nil."
+  (unless (or (eq (type-of test-string) 'string)
+              (eq test-string nil))
+    (error "Argument must be of string type or nil."))
+  (cond ((eq nil test-string) nil)
+        ((string-match "localhost" test-string) nil)
+        ((string-match "127\.0\.0\.1" test-string) nil)
+        (t test-string)))
 
 (defun trapt-utils--list-or-string (value)
   "Return VALUE if VALUE is a string.
@@ -137,48 +147,48 @@ string containing the list of arguments to pass."
   (vterm-send-string command)
   (vterm-send-return))
 
-(defun trapt-utils--command (command &optional server)
+(defun trapt-utils--command (command &optional host)
   "Run COMMAND with `async-shell-command'.
 
-If SERVER is a server name of the form username@server, run the
+If HOST is a host name of the form username@host, run the
 command using ssh."
   (interactive)
-  (if server
-      (trapt-utils--run-ssh server (async-shell-command command))
+  (if (trapt--remotehost-p host)
+      (trapt-utils--run-ssh host (async-shell-command command))
     (async-shell-command command)))
 
-(defun trapt-utils--run-command (command &optional shell server)
-  "Run COMMAND with `async-shell-command'.
+(defun trapt-utils--run-command (command &optional shell host)
+"Run COMMAND with `async-shell-command'.
 
 SHELL can be nil, `vterm', or `eshell'. If the value is `vterm' or `eshell',
 COMMAND will be run using that shell mode.
 
-If SERVER is in the form username@servername, then the APT command will be run
-on that corresponding remote server."
-  (message "Running: %s" command)
-  (cond ((string= shell "vterm")
-         (trapt-utils--vterm-exec command server))
-        ((string= shell "eshell")
-         (trapt-utils--eshell-exec command server))
-        (t (trapt-utils--command command server))))
+If HOST is in the form username@hostname, then the APT command will be run
+on that corresponding remote host."
+(message "Running: %s" command)
+(cond ((string= shell "vterm")
+       (trapt-utils--vterm-exec command host))
+      ((string= shell "eshell")
+       (trapt-utils--eshell-exec command host))
+      (t (trapt-utils--command command host))))
 
-(defun trapt-utils--vterm-exec (command &optional server)
+(defun trapt-utils--vterm-exec (command &optional host)
   "Insert the string COMMAND in a vterm buffer and execute it.
 
-If SERVER is a server name of the form username@server, run the
+If HOST is a host name of the form username@host, run the
 command using ssh."
   (interactive)
-  (if server
-      (trapt-utils--run-ssh server (trapt-utils--vterm-command command))
+  (if (trapt--remotehost-p host)
+      (trapt-utils--run-ssh host (trapt-utils--vterm-command command))
     (trapt-utils--vterm-command command)))
 
-(defun trapt-utils--eshell-exec (command &optional server)
+(defun trapt-utils--eshell-exec (command &optional host)
   "Run COMMAND in eshell.
 
-If SERVER is a server name of the form username@server, run the
+If HOST is a host name of the form username@host, run the
 command using ssh."
-  (if server
-      (trapt-utils--run-ssh server (eshell-command command)))
+  (if (trapt--remotehost-p host)
+      (trapt-utils--run-ssh host (eshell-command command)))
   (eshell-command command))
 
 (defun trapt-utils--list-to-string (lst)
@@ -187,10 +197,10 @@ command using ssh."
         ((listp lst) (mapconcat #'identity lst " "))
         (t (error "Error: Must be a list!"))))
 
-(defun trapt-utils--shell-command-to-string (command &optional server)
+(defun trapt-utils--shell-command-to-string (command &optional host)
   "Run shell COMMAND in a shell and return the output as string.
 
-SERVER is a string of the form username@server that specifies a server on which
+HOST is a string of the form username@host that specifies a host on which
 to run the command."
   ;; Add options from `trapt-utils--apt-options' before
   ;; sending the command to ensure the correct string is returned.
@@ -199,9 +209,9 @@ to run the command."
                          " "
                          (trapt-utils--list-to-string
                           trapt-utils--apt-options))))
-    (if server
-        (progn (message "Running: %s on %s" command server)
-               (trapt-utils--run-ssh server
+    (if (trapt--remotehost-p host)
+        (progn (message "Running: %s on %s" command host)
+               (trapt-utils--run-ssh host
                                      (shell-command-to-string command-string)))
       (progn (message "Running: %s" command)
              (shell-command-to-string command-string)))))

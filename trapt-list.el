@@ -138,14 +138,14 @@ the sort order."
                (cl-values`(trapt-list--num-upgradable . ,num-upgradable))))
     (trapt-utils--set-save-stats)))
 
-(defun trapt-list--create-tablist (command &optional server)
+(defun trapt-list--create-tablist (command &optional host)
   "Call `trapt-list--apt-list-to-tablist' and create a tablist buffer.
 
 The buffer contains the result of `apt list' run from in an inferior shell.
 
 COMMAND must be a string with the form `sudo apt list [arguments]'.
 
-SERVER is a string of the form username@server that specifies a server on which
+HOST is a string of the form username@host that specifies a host on which
 to run the command."
   (cl-labels
       ((add-trapt-list--buffer-name-to-trapt-list--tablist-buffers ()
@@ -189,7 +189,7 @@ to run the command."
       (setf tabulated-list-sort-key trapt-list-default-sort-key)
       (tabulated-list-init-header)
       (thread-last
-        (trapt-utils--shell-command-to-string command server)
+        (trapt-utils--shell-command-to-string command host)
         (apt-output-to-list)
         (lines-to-entries)
         (setf trapt-list--entries)
