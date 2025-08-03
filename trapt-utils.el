@@ -50,7 +50,7 @@ This list will be populated with buffer names as the buffers are created.")
                                         trapt-list--num-upgradable
                                         trapt-list--num-residual
                                         trapt-list--num-auto-installed)
-  "List of statisitics variables to save to disk.")
+  "List of statistics variables to save to disk.")
 
 (defmacro trapt-utils--check-mode (mode body)
   "BODY is a Lisp form that will execute if the current mode is MODE.
@@ -60,23 +60,30 @@ If not, an error will be thrown."
      (error (format "Error: Function must be called from %s mode." ,mode))))
 
 (defmacro trapt-utils--run-ssh (host body)
-  "Run BODY with tramp on HOST using ssh."
+  "Run BODY with tramp on HOST using ssh.
+
+HOST should be in a format that can be passed to tramp (i.e.
+username@hostname)."
   `(let* ((default-directory (expand-file-name
                               (format "/ssh:%s:~/" ,host))))
-     (with-connection-local-variables
-      ,body)))
+     (with-connection-local-variables ,body)))
 
 (defun trapt-utils--set-save-stats (stats-list)
   "Set satistics in STATS-LIST and save to file.
 
-STATS-LIST must of a list in the form of ((var1 . value1)...)."
+STATS-LIST must of a list in the form of ((var1 . value1)...). Each variable
+\(car\) in the association list will be set to the value (cdr) as this function
+loops through the list. The list will then be written to the file specified in
+the variable `trapt-stats-file'."
   (with-temp-file trapt-stats-file
-    (insert (format "%s"
-                    (cl-loop for element in stats-list
-                             do (setf varname (car element))
-                             (setf variable-value (cdr element))
-                             (set `,varname variable-value)
-                             collect `(,varname . ,variable-value))))))
+    (thread-last
+      (cl-loop for element in stats-list
+               do (setf varname (car element))
+               (setf variable-value (cdr element))
+               (set `,varname variable-value)
+               collect `(,varname . ,variable-value)))
+    (format "%s")
+    (insert)))
 
 (defun trapt-utils--read-file (filepath)
   "Read contents from FILEPATH."
@@ -85,7 +92,10 @@ STATS-LIST must of a list in the form of ((var1 . value1)...)."
     (read (buffer-string))))
 
 (defun trapt--remotehost-p (test-string)
-  "Return TEST-STRING if it refers to a remote host, otherwise nil."
+  "Return TEST-STRING if it refers to a remote host, otherwise nil.
+
+TEST-STRING refers to a local host if the vale is nil or if it contains the word
+`localhost' or `127.0.0.1'."
   (unless (or (eq (type-of test-string) 'string)
               (eq test-string nil))
     (error "Argument must be of string type or nil."))
@@ -97,12 +107,9 @@ STATS-LIST must of a list in the form of ((var1 . value1)...)."
 (defun trapt-utils--list-or-string (value)
   "Return VALUE if VALUE is a string.
 If VALUE is a list, return a space-separated string."
-  (cond ((not value)
-         "")
-        ((stringp value)
-         value)
-        ((listp value)
-         (trapt-utils--list-to-string value))))
+  (cond ((not value) "")
+        ((stringp value) value)
+        ((listp value) (trapt-utils--list-to-string value))))
 
 (defun trapt-utils--get-tablist-item (idx)
   "Get the item from index IDX for the current item at point in a tablist."
@@ -129,16 +136,15 @@ If no ARGUMENTS is passed, then the user will be prompted for a space-separated
 string containing the list of arguments to pass."
   (let ((package-string (trapt-utils--list-or-string packages))
         (arg-string (trapt-utils--list-or-string arguments)))
-    (format "%s%s %s %s%s"
-            (if sudo
-                "sudo "
-              "")
-            "apt"
-            operation
-            (if (not (string= package-string ""))
-                (concat package-string " ")
-              "")
-            arg-string)))
+    (thread-last
+      (when arg-string
+        (concat " " arg-string))
+      (concat (when package-string
+                (concat " " package-string)))
+      (concat " " operation)
+      (concat (if sudo
+                  "sudo apt"
+                "apt")))))
 
 (defun trapt-utils--vterm-command (command)
   "Opens a new vterm window and insert and execute COMMAND."
