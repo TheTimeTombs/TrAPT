@@ -3,7 +3,7 @@
 ;; Author: Thomas Freeman
 ;; Maintainer: Thomas Freeman
 ;; Version: 20250522
-;; Package-Requires: ((emacs "24.3"))
+;; Package-Requires: ((emacs "24.3") (tablist))
 ;; Homepage: https://github.com/tfree87/trapt
 ;; Keywords: processes
 

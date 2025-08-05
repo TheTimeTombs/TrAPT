@@ -113,7 +113,9 @@ the form username@host."
 (defun trapt--transient-args (arglist)
   "Remove the value `remote' from ARGLIST and return the shortened list."
   (if (bound-and-true-p transient-current-command)
-      (transient-args transient-current-command)
+      ;; Return transient args
+      ;; or an empty string to prevent unwanted prompts for args
+      (or (transient-args transient-current-command) "")
     arglist))
 
 (defun trapt--get-marked-packages (packages)
