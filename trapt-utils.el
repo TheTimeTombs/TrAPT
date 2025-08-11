@@ -127,9 +127,7 @@ OPERATION is a string containing a command for the APT package tool.
 
 If SUDO is non-nil then the command will be called with `sudo'.
 
-PACKAGES is list or space-separated string of packages to upgrade. If no
-PACKAGES are passed, then the user will be prompted for a space-separated string
-containing the list of packages to upgrade.
+PACKAGES is list or space-separated string of packages to upgrade.
 
 ARGUMENTS is a list or space-separated string of arguments to the apt command.
 If no ARGUMENTS is passed, then the user will be prompted for a space-separated

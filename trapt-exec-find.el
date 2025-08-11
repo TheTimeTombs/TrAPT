@@ -2,8 +2,8 @@
 
 ;; Author: Thomas Freeman
 ;; Maintainer: Thomas Freeman
-;; Version: 1.2
-;; Package-Requires: ((emacs "24.3"))
+;; Version: 2.0
+;; Package-Requires: ((emacs "24.3") (bui))
 ;; Homepage: https://github.com/tfree87/trapt
 ;; Keywords: processes
 
@@ -37,40 +37,14 @@
 ;;; Code:
 
 
+(require 'bui)
 (require 'trapt-utils)
 
 (defgroup trapt-exec-find nil
   "Customization options for TrAPT-Exec-Find."
   :group 'TrAPT)
 
-(defvar trapt-exec-find--columns '("Package Name"
-                                   "Executable Name"
-                                   "Path"
-                                   "Version"
-                                   "Package Manager"
-                                   "Calling File")
-  "A list of column names for `trapt-exec-find-mode'.")
-
-(defcustom trapt-exec-find-default-sort-key '("Package Name" . nil)
-  "Sort key for results returned from `trapt-exec-find-report'.
-
- This should be a cons cell (NAME . FLIP) where NAME is a string matching one of
-the column names from `trapt-exec-find--columns' and FLIP is a boolean to
-specify the sort order."
-  :group 'trapt-exec-find
-  :type '(cons (string :tag "Column Name"
-                       :validate (lambda (widget)
-                                   (unless (member
-                                            (widget-value widget)
-                                            trapt-exec-find--columns)
-                                     (widget-put widget
-                                                 (error "Default sort key must\
- match a column name"))
-                                     widget)))
-               (choice (const :tag "Ascending" nil)
-                       (const :tag "Descending" t))))
-
-(defvar trapt-exec-find-mode-map
+(defvar trapt-exec-find-list-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map "p" #'trapt-exec-find-goto-path)
     (define-key map "c" #'trapt-exec-find-goto-call)
@@ -90,7 +64,7 @@ manager.")
 (defvar trapt-exec-find--report-buffer-name "*TrAPT Exec Find*"
   "The name of the buffer for `trapt-exec-find-report'.")
 
-(easy-menu-define trapt-exec-find-mode-menu trapt-exec-find-mode-map
+(easy-menu-define trapt-exec-find-list-mode-menu trapt-exec-find-list-mode-map
   "Menu when `trapt-exec-find-mode' is active."
   `("TrAPT Exec Find"
     ["Install selected packages" trapt-apt-install
@@ -105,27 +79,38 @@ manager.")
      :help "Open the path location for the executable file at point."]
     ["Go to trapt-exec-find Call" 'trapt-exec-find-goto-call
      :help "Go to the Lisp file where 'trapt-exec-find' was called for the item\
- at point."]))
+at point."]))
 
 (defun trapt-exec-find--progpath (program)
   "Return the program path for PROGRAM or return `not found'."
   (trapt-exec-find--propertize (or (executable-find program) "not found")))
 
-(defun trapt-exec-find--create-tablist-entry-list ()
+(defun trapt-exec-find--get-entries ()
   "Pass `trapt-exec-find-list' and add them to `tabulated-list-entries'.
 Additionally, determine the execuable paths for each executable and pass them to
 `tabulated-list-entries'."
-  (let*  ((entries
-           (cl-loop for element in trapt-exec-find--list
-                    for counter from 1
-                    collect `(,counter [,(car element)
-                                        ,(nth 1 element)
-                                        ,(trapt-exec-find--progpath
-                                          (nth 1 element))
-                                        ,(nth 2 element)
-                                        ,(nth 3 element)
-                                        ,(nth 4 element)]))))
-    (setf tabulated-list-entries entries)))
+  (cl-loop for element in trapt-exec-find--list
+           collect `((id . ,(make-symbol (nth 0 element)))
+                     (package . ,(nth 0 element))
+                     (executable . ,(nth 1 element))
+                     (path . ,(trapt-exec-find--progpath (nth 1 element)))
+                     (version . ,(trapt-exec-find--propertize (nth 2 element)))
+                     (package-manager . ,(nth 3 element))
+                     (calling-path . ,(trapt-exec-find--propertize (nth 4 element))))))
+
+(bui-define-interface trapt-exec-find list
+  :mode-name "TrAPT Exec Find"
+  :buffer-name "*TrAPT Exec Find*"
+  :get-entries-function 'trapt-exec-find--get-entries
+  ;;:describe-function 'guix-store-item-list-describe
+  :format '((package nil 15 t)
+            (executable nil 15 t)
+            (path nil 30 t)
+            (version nil 15 t)
+            (package-manager nil 15 t)
+            (calling-path nil 30 t))
+  :sort-key '(package)
+  :marks '((install . ?I)))
 
 (defun trapt-exec-find-goto-path ()
   "Opens the path for the executable at point."
@@ -167,7 +152,8 @@ manage this package. Currently, this if for reference purposes only."
                             collect (car elt))))
     (when (stringp program)
       (unless (member program proglist)
-        (push `(,pkg-name ,program ,version ,pkg-mgr ,(or load-file-name "no specified"))
+        (push `(,pkg-name ,program ,version ,pkg-mgr ,(or load-file-name
+                                                          "not specified"))
               trapt-exec-find--list))))
   command-string)
 
@@ -184,34 +170,7 @@ manage this package. Currently, this if for reference purposes only."
 (defun trapt-exec-find-report ()
   "Generate a report of all packages identified with `trapt-exec-find'."
   (interactive)
-  (with-current-buffer
-      (get-buffer-create trapt-exec-find--report-buffer-name)
-    (trapt-exec-find-mode)
-    (when (boundp 'trapt--tablist-buffers)
-      (if trapt--tablist-buffers
-          (add-to-list 'trapt--tablist-buffers
-                       trapt-exec-find--report-buffer-name)
-        (push trapt-exec-find--report-buffer-name trapt--tablist-buffers)))
-    (setf tabulated-list-sort-key trapt-exec-find-default-sort-key)
-    (setf tabulated-list-format [("Package Name" 15 t)
-                                 ("Executable Name" 15 t)
-                                 ("Path" 30 t)
-                                 ("Version" 15 t)
-                                 ("Package Manager" 15 t)
-                                 ("Calling File" 30 t)])
-    (tabulated-list-init-header)
-    (trapt-exec-find--create-tablist-entry-list)
-    (revert-buffer))
-  (switch-to-buffer trapt-exec-find--report-buffer-name))
-
-;;;###autoload
-(define-derived-mode trapt-exec-find-mode
-  tabulated-list-mode
-  trapt-exec-find--mode-name
-  "Major mode for interacting with a list of packages from APT."
-  :keymap trapt-exec-find-mode-map
-  (setf tabulated-list-padding 2)
-  (tablist-minor-mode))
+  (bui-get-display-entries 'trapt-exec-find 'list))
 
 (provide 'trapt-exec-find)
 

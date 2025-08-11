@@ -2,7 +2,7 @@
 
 ;; Author: Thomas Freeman
 ;; Maintainer: Thomas Freeman
-;; Version: 1.2
+;; Version: 2.0
 ;; Package-Requires: ((emacs "28.1"))
 ;; Homepage: https://github.com/tfree87/trapt
 ;; Keywords: processes
@@ -178,13 +178,22 @@ If SUDO is non-nil, then the command will be run with sudo."
                    packages
                    arguments)))
     (cond ((string= operation "list")
-           (trapt-list--create-tablist command host)
+           (trapt-list--current-command command host)
            (when (or (not packages) (string= packages ""))
              (trapt-list--get-stats)))
           ((string= operation "show")
            (trapt-utils--shell-command-to-string command))
           (t
            (trapt-utils--run-command command trapt-shell host)))))
+
+(defun trapt--prompt (command-type  &optional prompt)
+  (or 
+   (when prompt
+     (read-string
+      (format
+       "Enter arguments for %s (space separated): "
+       operation)))
+   ""))
 
 ;;;###autoload
 (cl-defun trapt-apt-install (&key packages arglist (prompt t))
@@ -393,32 +402,6 @@ If REMOTE in non-nil, then the user will be prompted for a remote host from
                   :sudo t))
 
 ;;;###autoload
-(cl-defun trapt-apt-list (&key packages arglist (prompt t) remote)
-  "Run apt list. This is a wrapper function for `trapt--execute'.
-
-PACKAGES is a list of packages to upgrade. If no PACKAGES are passed, then the
-user will be prompted for a space-separated string containing the list of
-packages to upgrade.
-
-ARGLIST is a list of arguments to the apt command. If no ARGLIST is passed, then
-the user will be prompted for a space-separated string containing the list of
-arguments to pass.
-
-If PROMPT is nil, then the user will not be prompted for packages and arguments
-if none are given. This should be used for non-interactive calls.
-
-If REMOTE in non-nil, then the user will be prompted for a remote host from
-`trapt-remotes' on which to run `apt list'."
-  (interactive)
-  (let* ((arguments arglist))
-    (trapt--execute "list"
-                    :packages (trapt--get-marked-packages packages)
-                    :arglist (trapt--transient-args arglist)
-                    :prompt prompt
-                    :host trapt-current-host
-                    :sudo nil)))
-
-;;;###autoload
 (cl-defun trapt-apt-show (&key packages arglist (prompt t) remote)
   "Run apt list. This is a wrapper function for `trapt--execute'.
 
@@ -536,19 +519,6 @@ If REMOTE in non-nil, then the user will be prompted for a remote host from
     :transient t
     :description (lambda () (format "Host: %s" trapt-current-host)))])
 
-(transient-define-prefix trapt--apt-list-transient ()
-  "Transient menu for apt list command."
-  ["Arguments"
-   ("a" "all versions" "--all-versions")
-   ("i" "installed" "--installed")
-   ("u" "upgradable" "--upgradable")]
-  ["APT List"
-   ("l" "list" trapt-apt-list)]
-  ["Host"
-   ("H" "host" trapt-set-host
-    :transient t
-    :description (lambda () (format "Host: %s" trapt-current-host)))])
-
 ;;;###autoload (autoload 'trapt "trapt.el" "A transient menu for APT." t)
 (transient-define-prefix trapt ()
   "Transient menu for apt package manager."
@@ -563,7 +533,7 @@ If REMOTE in non-nil, then the user will be prompted for a remote host from
           :if trapt--num-residual)]
   ["APT Package Manager"
    ("i" "install packages" trapt--apt-install-transient)
-   ("l" "list packages" trapt--apt-list-transient)
+   ("l" "list packages" trapt-list--apt-list-transient)
    ("o" "other commands" trapt--apt-other-transient)
    ("r" "remove/purge packages" trapt--apt-remove-transient)
    ("u" "update/upgrade/autoclean" trapt--apt-upgrade-transient)]
