@@ -40,9 +40,9 @@
 (require 'bui)
 (require 'trapt-utils)
 
-(defgroup trapt-exec-find nil
-  "Customization options for TrAPT-Exec-Find."
-  :group 'TrAPT)
+;;(defgroup trapt-exec-find nil
+;;  "Customization options for TrAPT-Exec-Find."
+;;  :group 'TrAPT)
 
 (defvar trapt-exec-find-list-mode-map
   (let ((map (make-sparse-keymap)))
@@ -64,6 +64,66 @@ manager.")
 (defvar trapt-exec-find--report-buffer-name "*TrAPT Exec Find*"
   "The name of the buffer for `trapt-exec-find-report'.")
 
+
+(defun trapt-exec-find--progpath (program)
+  "Return the program path for PROGRAM or return `not found'."
+  (trapt-exec-find--propertize (or (executable-find program) "not found")))
+
+(defun trapt-exec-find--exec->entry (exec)
+  (let ((item (assoc (format "%s" exec) trapt-exec-find--list)))
+    `((id . ,(make-symbol (nth 0 item)))
+      (package . ,(nth 0 item))
+      (executable . ,(nth 1 item))
+      (path . ,(trapt-exec-find--progpath (nth 1 item)))
+      (version . ,(trapt-exec-find--propertize (nth 2 item)))
+      (package-manager . ,(nth 3 item))
+      (calling-path . ,(trapt-exec-find--propertize (nth 4 item))))))
+
+(defun trapt-exec-find--get-execs (&optional search-type &rest search-values)
+  "Take a list of execu"
+  (or search-type (setf search-type 'all))
+  (cl-case search-type
+    (all (trapt-exec-find--exec-names))
+    (id search-values)
+    (t (error "Unknown search type: %S" search-type))))
+
+(defun trapt-exec-find--exec-names ()
+  (cl-loop for item in trapt-exec-find--list
+           collect (car item)))
+
+(defun trapt-exec-find--get-entries (&rest args)
+  (mapcar #'trapt-exec-find--exec->entry
+          (apply #'trapt-exec-find--get-execs args)))
+
+(bui-define-entry-type trapt-exec-find
+  :get-entries-function #'trapt-exec-find--get-entries)
+
+(bui-define-interface trapt-exec-find info
+  :format '((package format (format))
+            (executable format (format))
+            (path format (format))
+            (version format (format))
+            (package-manager format (format))
+            (calling-path format (format))))
+
+(defun trapt-exec-find--describe (&rest execs)
+  "Display 'info' buffer for BUFFERS."
+  (bui-get-display-entries 'trapt-exec-find 'info (cons 'id execs)))
+
+(bui-define-interface trapt-exec-find list
+  :mode-name "TrAPT Exec Find"
+  :buffer-name "*TrAPT Exec Find*"
+  :describe-function #'trapt-exec-find--describe
+  :format '((package nil 15 t)
+            (executable nil 15 t)
+            (path nil 30 t)
+            (version nil 15 t)
+            (package-manager nil 15 t)
+            (calling-path nil 30 t))
+  :sort-key '(package)
+  :marks '((install . ?I)))
+
+;;; This must come after `bui-define-interface'
 (easy-menu-define trapt-exec-find-list-mode-menu trapt-exec-find-list-mode-map
   "Menu when `trapt-exec-find-mode' is active."
   `("TrAPT Exec Find"
@@ -80,37 +140,6 @@ manager.")
     ["Go to trapt-exec-find Call" 'trapt-exec-find-goto-call
      :help "Go to the Lisp file where 'trapt-exec-find' was called for the item\
 at point."]))
-
-(defun trapt-exec-find--progpath (program)
-  "Return the program path for PROGRAM or return `not found'."
-  (trapt-exec-find--propertize (or (executable-find program) "not found")))
-
-(defun trapt-exec-find--get-entries ()
-  "Pass `trapt-exec-find-list' and add them to `tabulated-list-entries'.
-Additionally, determine the execuable paths for each executable and pass them to
-`tabulated-list-entries'."
-  (cl-loop for element in trapt-exec-find--list
-           collect `((id . ,(make-symbol (nth 0 element)))
-                     (package . ,(nth 0 element))
-                     (executable . ,(nth 1 element))
-                     (path . ,(trapt-exec-find--progpath (nth 1 element)))
-                     (version . ,(trapt-exec-find--propertize (nth 2 element)))
-                     (package-manager . ,(nth 3 element))
-                     (calling-path . ,(trapt-exec-find--propertize (nth 4 element))))))
-
-(bui-define-interface trapt-exec-find list
-  :mode-name "TrAPT Exec Find"
-  :buffer-name "*TrAPT Exec Find*"
-  :get-entries-function 'trapt-exec-find--get-entries
-  ;;:describe-function 'guix-store-item-list-describe
-  :format '((package nil 15 t)
-            (executable nil 15 t)
-            (path nil 30 t)
-            (version nil 15 t)
-            (package-manager nil 15 t)
-            (calling-path nil 30 t))
-  :sort-key '(package)
-  :marks '((install . ?I)))
 
 (defun trapt-exec-find-goto-path ()
   "Opens the path for the executable at point."
