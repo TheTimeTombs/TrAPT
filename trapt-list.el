@@ -240,28 +240,8 @@
     (read-string "Search Term: ")
     (setf trapt-list-search-term)))
 
-(defun trapt-list--get-stats ()
-  "Return a list of statistics from APT list."
-  (thread-last
-    (cl-loop for element in tabulated-list-entries
-             when  (string-match "upgradable" (aref (cadr element) 4))
-             count element into num-upgradable
-             when (string-match "installed" (aref (cadr element) 4))
-             count element into num-installed
-             when (string-match "residual-config" (aref (cadr element) 4))
-             count element into num-residual
-             when (string-match "automatic" (aref (cadr element) 4))
-             count element into num-auto
-             finally
-             return
-             (if (not (string-match "--upgradable" trapt-list--current-command))
-                 (cl-values `(trapt-list--num-installed . ,num-installed)
-                            `(trapt-list--num-upgradable . ,num-upgradable)
-                            `(trapt-list--num-residual . ,num-residual)
-                            `(trapt-list--num-auto-installed . ,num-auto))
-               ;; Only update upgradable stat if that list is called
-               (cl-values`(trapt-list--num-upgradable . ,num-upgradable))))
-    (trapt-utils--set-save-stats)))
+
+;;; transient menu
 
 (transient-define-prefix trapt-list--apt-list-transient ()
   "Transient menu for apt list command."
