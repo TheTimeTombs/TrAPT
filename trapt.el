@@ -65,6 +65,12 @@
 (defvar trapt-current-host trapt-default-host
   "The current host to run TrAPT commands.")
 
+(defvar trapt--package-list-buffers '()
+  "List of TrAPT buffers with package lists.")
+
+(defvar trapt--num-automatic 0
+  "The number of automatically installed packages.")
+
 (defvar trapt--num-installed 0
   "The number of packages which can be upgraded.")
 
@@ -81,7 +87,7 @@
 ;;; general functions
 
 (defun trapt--calculate-stats ()
-  "Return a string showing the number of installed packages."
+  "Run `apt list' and collect statistics."
   (message "Loading TrAPT stats...")
   (with-temp-buffer
     (insert (shelly-command-to-string "apt list --installed 2> /dev/null"
@@ -95,7 +101,7 @@
 
 (defun trapt--apt-cache-updated ()
   "Return a string showing the last update to APT cache."
-  (format "Updated: %s"
+  (format "last updated: %s"
           (substring (shell-command-to-string "stat -c %y /var/cache/apt/")
                      0
                      16)))
@@ -148,6 +154,17 @@ If SUDO is non-nil, then the command will be run with sudo."
           (t
            (trapt-utils--run-command command trapt-shell host)))))
 
+(defun trapt--get-packages (packages)
+  ""
+  (message (buffer-name))
+  (if packages
+      packages
+    (when (member (buffer-name) trapt--package-list-buffers)
+      (thread-last
+        (bui-list-get-marked)
+        (mapcar (lambda (item) (symbol-name (car item))))
+        (trapt-utils--list-to-string)))))
+
 ;;;###autoload
 (cl-defun trapt-apt-install (&key packages arglist (prompt t))
   "Run apt install. This is a wrapper function for `trapt--execute'.
@@ -164,7 +181,7 @@ If PROMPT is nil, then the user will not be prompted for packages and arguments
 if none are given. This should be used for non-interactive calls."
   (interactive)
   (trapt--execute "install"
-                  :packages (trapt--get-marked-packages packages)
+                  :packages (trapt--get-packages packages)
                   :arglist (trapt--transient-args arglist)
                   :prompt prompt
                   :host trapt-current-host
@@ -426,11 +443,11 @@ If REMOTE in non-nil, then the user will be prompted for a remote host from
 
 (defun trapt--num-residual ()
   "Return a string showing the number of upgradable packages."
-  (format "residual configs: %s" trapt-list--num-residual))
+  (format "residual configs: %s" trapt--num-residual))
 
 (defun trapt--num-automatic ()
   "Format automatically isntalled packages number for display."
-  (format "auto installed: %s" trapt-list--num-auto-installed))
+  (format "auto installed: %s" trapt--num-automatic))
 
 (defun trapt-select-host ()
   "Prompt the user for a host and set `trapt-current-remote'."
@@ -447,7 +464,7 @@ If REMOTE in non-nil, then the user will be prompted for a remote host from
     arglist))
 
 
-;;; transient menus and helpfer functions
+;;; transient menus and helper functions
 
 (transient-define-prefix trapt--apt-upgrade-transient ()
   "Transient menu for apt upgrade commands."
@@ -542,9 +559,6 @@ This function is the man entry point for TrAPT."
   (interactive)
   (trapt--calculate-stats)
   (trapt--transient))
-
-;; Load saved statistics after package load
-(eval-after-load "trapt.el" (trapt--load-stats))
 
 (provide 'trapt)
 
