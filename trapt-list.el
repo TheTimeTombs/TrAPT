@@ -303,10 +303,6 @@ arguments to pass."
     (trapt-list--generate))
   (bui-get-display-entries 'trapt-apt 'list))
 
-(defun printy ()
-  (interactive)
-  (print (bui-list-get-marked)))
-
 (eval-after-load "trapt-list"
   '(add-to-list 'trapt--package-list-buffers trapt-list--buffer-name))
 
