@@ -266,6 +266,10 @@
 (transient-define-prefix trapt-list--apt-list-transient ()
   "Transient menu for apt list command."
   :value '("--installed")
+  ["Host"
+   ("H" "host" trapt-select-host
+    :transient t
+    :description (lambda () (format "Host: %s" trapt-current-host)))]
   ["Arguments"
    ("a" "all versions" "--all-versions")
    ("i" "installed" "--installed")
@@ -276,11 +280,7 @@
    ("s" "search term" trapt-list-set-search-term
     :transient t
     :description (lambda () (concat "Search Term: "
-                                    trapt-list-search-term)))]
-  ["Host"
-   ("H" "host" trapt-set-host
-    :transient t
-    :description (lambda () (format "Host: %s" trapt-current-host)))])
+                                    trapt-list-search-term)))])
 
 
 
@@ -306,6 +306,9 @@ arguments to pass."
 (defun printy ()
   (interactive)
   (print (bui-list-get-marked)))
+
+(eval-after-load "trapt-list"
+  '(add-to-list 'trapt--package-list-buffers trapt-list--buffer-name))
 
 (provide 'trapt-list)
 

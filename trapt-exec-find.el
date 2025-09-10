@@ -61,7 +61,7 @@ manager.")
 (defvar trapt-exec-find--mode-name "TrAPT Exec Find"
   "The name of the mode for `trapt-exec-find-mode'.")
 
-(defvar trapt-exec-find--report-buffer-name "*TrAPT Exec Find*"
+(defvar trapt-exec-find--buffer-name "*TrAPT Exec Find*"
   "The name of the buffer for `trapt-exec-find-report'.")
 
 
@@ -70,6 +70,7 @@ manager.")
   (trapt-exec-find--propertize (or (executable-find program) "not found")))
 
 (defun trapt-exec-find--exec->entry (exec)
+  "Return EXEC entry for `trapt-exec-find-list' buffer."
   (let ((item (assoc (format "%s" exec) trapt-exec-find--list)))
     `((id . ,(make-symbol (nth 0 item)))
       (package . ,(nth 0 item))
@@ -80,7 +81,13 @@ manager.")
       (calling-path . ,(trapt-exec-find--propertize (nth 4 item))))))
 
 (defun trapt-exec-find--get-execs (&optional search-type &rest search-values)
-  "Take a list of execu"
+  "Return a list of `trapt-exec-find' entry types.
+
+If SEARCH-TYPE is the symbol `all', then all of the possible executable entries
+will be returned.
+
+If the first element of SEARCH-TYPE is `id', then the list SEARCH-VALUES will be
+used to return the list of executables to display."
   (or search-type (setf search-type 'all))
   (cl-case search-type
     (all (trapt-exec-find--exec-names))
@@ -110,9 +117,10 @@ manager.")
   "Display 'info' buffer for BUFFERS."
   (bui-get-display-entries 'trapt-exec-find 'info (cons 'id execs)))
 
+
 (bui-define-interface trapt-exec-find list
   :mode-name "TrAPT Exec Find"
-  :buffer-name "*TrAPT Exec Find*"
+  :buffer-name trapt-exec-find--buffer-name
   :describe-function #'trapt-exec-find--describe
   :format '((package nil 15 t)
             (executable nil 15 t)
@@ -200,6 +208,9 @@ manage this package. Currently, this if for reference purposes only."
   "Generate a report of all packages identified with `trapt-exec-find'."
   (interactive)
   (bui-get-display-entries 'trapt-exec-find 'list))
+
+(eval-after-load "trapt-exec-find"
+  '(add-to-list 'trapt--package-list-buffers trapt-exec-find--buffer-name))
 
 (provide 'trapt-exec-find)
 
