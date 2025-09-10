@@ -50,12 +50,6 @@
   :type '(string)
   :group 'trapt)
 
-(defcustom trapt-shell "default"
-  "The shell to run TrAPT commands."
-  :type '(string)
-  :options '("default" "eshell" "vterm")
-  :group 'trapt)
-
 (defcustom trapt-default-host "localhost"
   "The default host for TrAPT operations.")
 
@@ -147,23 +141,21 @@ If SUDO is non-nil, then the command will be run with sudo."
                    sudo
                    packages
                    arguments)))
-    (cond ((string= operation "list")
-           (trapt-list--current-command command host))
-          ((string= operation "show")
-           (trapt-utils--shell-command-to-string command))
+    (cond ((string= operation "show")
+           (shelly-shell command))
           (t
-           (trapt-utils--run-command command trapt-shell host)))))
+           (shelly-run-command :command command :host host)))))
 
 (defun trapt--get-packages (packages)
-  ""
+  "Get packages from bui-list-buffer, otherwise return PACKAGES."
   (message (buffer-name))
   (if packages
       packages
-    (when (member (buffer-name) trapt--package-list-buffers)
-      (thread-last
-        (bui-list-get-marked)
-        (mapcar (lambda (item) (symbol-name (car item))))
-        (trapt-utils--list-to-string)))))
+    (if (member (buffer-name) trapt--package-list-buffers)
+        (thread-last
+          (bui-list-get-marked)
+          (mapcar (lambda (item) (symbol-name (car item))))
+          (trapt-utils--list-to-string)))))
 
 ;;;###autoload
 (cl-defun trapt-apt-install (&key packages arglist (prompt t))
