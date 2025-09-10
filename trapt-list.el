@@ -53,18 +53,6 @@
 (defvar trapt-list--mode-name "TrAPT List"
   "The name of `trapt-list-mode' buffer.")
 
-(defvar trapt-list--num-installed nil
-  "The number of installed APT packages.")
-
-(defvar trapt-list--num-upgradable nil
-  "The number of upgradable APT packages.")
-
-(defvar trapt-list--num-residual nil
-  "The number of APT packages with residual data.")
-
-(defvar trapt-list--num-auto-intalled nil
-  "The number of automatically installed APT packages.")
-
 (defvar trapt-list--entries nil
   "A list of all the APT List entries for `tabulated-list-entries'.")
 
@@ -119,11 +107,12 @@
         (description . "unknown")))))
 
 (defun trapt-list--package-names ()
+  "Returns a list of all package names from `trapt-list--entries'."
   (cl-loop for item in trapt-list--entries
            collect (car item)))
 
 (defun trapt-list--get-packages (&optional search-type &rest search-values)
-  "Take a list of execu"
+  
   (or search-type (setf search-type 'all))
   (cl-case search-type
     (all (trapt-list--package-names))
@@ -175,7 +164,7 @@
     (define-key map "m" #'trapt-org-export-marked)
     (define-key map "x" #'trapt)
     map)
-  "Keymap for `trapt-list-mode'.")
+  "Keymap for `trapt-apt-list-info-mode'.")
 
 (easy-menu-define trapt-apt-info-mode-menu trapt-apt-info-mode-map
   "Menu when `trapt-list-mode' is active."
