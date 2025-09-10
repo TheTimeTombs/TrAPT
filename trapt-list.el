@@ -59,8 +59,30 @@
 (defvar trapt-list--entries nil
   "A list of all the APT List entries for `tabulated-list-entries'.")
 
-(defvar trapt-list--names nil
-  "A list of all the APT List entries for `tabulated-list-entries'.")
+
+;;; general functions
+
+(defun trapt-list--generate (command)
+  "Create an entry list for `bui-define-interface'."
+  (cl-labels
+      ((remove-unwanted-lines (apt-lines-list)
+         "Remove unwanted items from APT-LINES-LIST."
+         (cl-remove-if (lambda (item)
+                         (or (string-empty-p item)
+                             (string-prefix-p "N:" item)
+                             (string-prefix-p "WARNING:" item)
+                             (string-prefix-p "Listing" item)
+                             (string-prefix-p "Listing..." item)))
+                       apt-lines-list)))
+
+    (thread-last
+      (split-string
+       (trapt-utils--shell-command-to-string command
+                                             trapt-current-host)
+       "\n")
+      (remove-unwanted-lines)
+      (mapcar (lambda (item) (split-string item "[ /]")))
+      (setf trapt-list--entries))))
 
 
 ;; Create apt entry type
@@ -125,28 +147,6 @@
 (defun trapt-list--get-entries (&rest args)
   (mapcar #'trapt-list--package->entry
           (apply #'trapt-list--get-packages args)))
-
-(defun trapt-list--generate (command)
-  "Create an entry list for `bui-define-interface'."
-  (cl-labels
-      ((remove-unwanted-lines (apt-lines-list)
-         "Remove unwanted items from APT-LINES-LIST."
-         (cl-remove-if (lambda (item)
-                         (or (string-empty-p item)
-                             (string-prefix-p "N:" item)
-                             (string-prefix-p "WARNING:" item)
-                             (string-prefix-p "Listing" item)
-                             (string-prefix-p "Listing..." item)))
-                       apt-lines-list)))
-
-    (thread-last
-      (split-string
-       (trapt-utils--shell-command-to-string command
-                                             trapt-current-host)
-       "\n")
-      (remove-unwanted-lines)
-      (mapcar (lambda (item) (split-string item "[ /]")))
-      (setf trapt-list--entries))))
 
 (bui-define-entry-type trapt-apt
   :get-entries-function #'trapt-list--get-entries)
