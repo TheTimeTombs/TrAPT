@@ -39,6 +39,15 @@
 (require 'transient)
 
 
+;;; constants
+
+(defconst trapt-list--buffer-name "*APT List*"
+  "The name of the buffer created for APT List Mode.")
+
+(defconst trapt-list--mode-name "TrAPT List"
+  "The name of `trapt-list-mode' buffer.")
+
+
 ;;; variables
 
 (defvar trapt-list--current-command nil
@@ -46,12 +55,6 @@
 
 (defvar trapt-list-search-term nil
   "The command used to generate the current list.")
-
-(defvar trapt-list--buffer-name "*APT List*"
-  "The name of the buffer created for APT List Mode.")
-
-(defvar trapt-list--mode-name "TrAPT List"
-  "The name of `trapt-list-mode' buffer.")
 
 (defvar trapt-list--entries nil
   "A list of all the APT List entries for `tabulated-list-entries'.")
