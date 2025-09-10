@@ -84,13 +84,15 @@
   "Return a string showing the number of installed packages."
   (message "Loading TrAPT stats...")
   (with-temp-buffer
-    (insert (shelly-command-to-string "apt list --installed 2> /dev/null"))
+    (insert (shelly-command-to-string "apt list --installed 2> /dev/null"
+                                      :host trapt-current-host))
     (mark-whole-buffer)
     (setf trapt--num-installed (count-matches "installed"))
     (setf trapt--num-upgradable (count-matches "upgradable"))
     (setf trapt--num-residual (count-matches "residual"))
     (setf trapt--num-automatic (count-matches "automatic"))
     (setf trapt--num-manual (- trapt--num-installed trapt--num-automatic))))
+
 (defun trapt--apt-cache-updated ()
   "Return a string showing the last update to APT cache."
   (format "Updated: %s"
@@ -407,7 +409,6 @@ If REMOTE in non-nil, then the user will be prompted for a remote host from
                        trapt-apt-sourcelist-file-path)))
     (find-file path)))
 
-
 
 ;;; helper functions for transient menus
 
@@ -434,7 +435,8 @@ If REMOTE in non-nil, then the user will be prompted for a remote host from
 (defun trapt-select-host ()
   "Prompt the user for a host and set `trapt-current-remote'."
   (interactive)
-  (setf trapt-current-host (shelly-select-host)))
+  (setf trapt-current-host (shelly-select-host))
+  (trapt--calculate-stats))
 
 (defun trapt--transient-args (arglist)
   "Remove the value `remote' from ARGLIST and return the shortened list."
@@ -449,8 +451,11 @@ If REMOTE in non-nil, then the user will be prompted for a remote host from
 
 (transient-define-prefix trapt--apt-upgrade-transient ()
   "Transient menu for apt upgrade commands."
-  ["Info"
-   (:info #'trapt--apt-cache-updated)
+  ["Host"
+   ("H" "host" trapt-select-host
+    :transient t
+    :description (lambda () (format "Host: %s" trapt-current-host)))]
+  ["APT Package Info"
    (:info #'trapt--num-upgradable)]
   ["Arguments"
    ("s" "simulate" "--simulate")
@@ -460,17 +465,18 @@ If REMOTE in non-nil, then the user will be prompted for a remote host from
    ("c" "autoclean" trapt-apt-autoclean)
    ("f" "full upgrade" trapt-apt-full-upgrade)
    ("u" "update" trapt-apt-update)
-   ("U" "upgrade" trapt-apt-upgrade)]
-  ["Host"
-   ("H" "host" trapt-select-host
-    :transient t
-    :description (lambda () (format "Host: %s" trapt-current-host)))])
+   ("U" "upgrade" trapt-apt-upgrade)])
 
 (transient-define-prefix trapt--apt-install-transient ()
   "Transient menu for apt install command."
-  ["Localhost Info"
-   (:info #'trapt--num-installed
-          :if trapt--num-installed)]
+  ["Host"
+   ("H" "host" trapt-select-host
+    :transient t
+    :description (lambda () (format "Host: %s" trapt-current-host)))]
+  ["APT Package Info"
+   (:info #'trapt--num-installed)
+   (:info #'trapt--num-automatic)
+   (:info #'trapt--num-manual)]
   ["Arguments"
    ("d" "download only" "--download-only")
    ("n" "no recommends" "--no-install-recommends")
@@ -478,25 +484,26 @@ If REMOTE in non-nil, then the user will be prompted for a remote host from
    ("s" "simulate" "--simulate")
    ("y" "assume yes" "--assume-yes")]
   ["APT Install"
-   ("i" "install" trapt-apt-install)]
-  ["Host"
-   ("H" "host" trapt-select-host
-    :transient t
-    :description (lambda () (format "Host: %s" trapt-current-host)))])
+   ("i" "install" trapt-apt-install)])
 
 (transient-define-prefix trapt--apt-remove-transient ()
   "Transient menu for apt remove commands."
+  ["Host"
+   ("H" "host" trapt-select-host
+    :transient t
+    :description (lambda () (format "Host: %s" trapt-current-host)))]
+  ["APT Package Info"
+   (:info #'trapt--num-installed)
+   (:info #'trapt--num-automatic)
+   (:info #'trapt--num-manual)
+   (:info #'trapt--num-residual)]
   ["Arguments"
    ("s" "simulate" "--simulate")
    ("y" "assume yes" "--assume-yes")]
   ["APT Removal Commands"
    ("a" "autoremove" trapt-apt-autoremove)
    ("p" "purge" trapt-apt-purge)
-   ("r" "remove" trapt-apt-remove)]
-  ["Host"
-   ("H" "host" trapt-select-host
-    :transient t
-    :description (lambda () (format "Host: %s" trapt-current-host)))])
+   ("r" "remove" trapt-apt-remove)])
 
 (transient-define-prefix trapt--apt-other-transient ()
   "Transient menu for apt package manager."
@@ -511,21 +518,22 @@ If REMOTE in non-nil, then the user will be prompted for a remote host from
 
 (transient-define-prefix trapt--transient ()
   "Transient menu for apt package manager."
-  ["Package Info"
+  ["Host"
+   ("H" "host" trapt-select-host
+    :transient t
+    :description (lambda () (format "Host: %s" trapt-current-host)))]
+  ["APT Package Info"
    (:info #'trapt--num-installed)
    (:info #'trapt--num-automatic)
    (:info #'trapt--num-manual)
-   (:info #'trapt--num-upgradable)]
+   (:info #'trapt--num-upgradable)
+   (:info #'trapt--num-residual)]
   ["APT Package Manager"
    ("i" "install packages" trapt--apt-install-transient)
    ("l" "list packages" trapt-list--apt-list-transient)
    ("o" "other commands" trapt--apt-other-transient)
    ("r" "remove/purge packages" trapt--apt-remove-transient)
-   ("u" "update/upgrade/autoclean" trapt--apt-upgrade-transient)]
-  ["Host"
-   ("H" "host" trapt-select-host
-    :transient t
-    :description (lambda () (format "Host: %s" trapt-current-host)))])
+   ("u" "update/upgrade/autoclean" trapt--apt-upgrade-transient)])
 
 ;;;###autoload
 (defun trapt ()
