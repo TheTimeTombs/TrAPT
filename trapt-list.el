@@ -171,10 +171,9 @@
 
 (defvar trapt-apt-info-mode-map
   (let ((map (make-sparse-keymap)))
-    (when (fboundp #'trapt)
-      (define-key map "a" #'trapt-org-export-all)
-      (define-key map "m" #'trapt-org-export-marked)
-      (define-key map "x" #'trapt))
+    (define-key map "a" #'trapt-org-export-all)
+    (define-key map "m" #'trapt-org-export-marked)
+    (define-key map "x" #'trapt)
     map)
   "Keymap for `trapt-list-mode'.")
 
@@ -194,8 +193,8 @@
 ;; list interface
 
 (defun trapt-apt-list--describe (&rest packages)
-  "display"
-  (bui-get-display-entries 'trapt-apt 'info (cons 'id packages)))
+"Display entries for PACKAGES "
+(bui-get-display-entries 'trapt-apt 'info (cons 'id packages)))
 
 (bui-define-interface trapt-apt list
   :mode-name trapt-list--mode-name
@@ -211,24 +210,23 @@
 
 (defvar trapt-apt-list-mode-map
   (let ((map (make-sparse-keymap)))
-    (when (fboundp #'trapt)
-      (define-key map "a" #'trapt-org-export-all)
-      (define-key map "m" #'trapt-org-export-marked)
-      (define-key map "x" #'trapt))
+    (define-key map "a" #'trapt-org-export-all)
+    (define-key map "m" #'trapt-org-export-marked)
+    (define-key map "x" #'trapt)
     map)
-  "Keymap for `trapt-list-mode'.")
+  "Keymap for `trapt-apt-list-mode'.")
 
 (easy-menu-define trapt-apt-list-mode-menu trapt-apt-list-mode-map
-  "Menu when `trapt-list-mode' is active."
-  `("TrAPT List"
-    ["Install selected packages" trapt-apt-install
-     :help "Install the selected packages with APT."]
-    ["Purge selected packages" trapt-apt-purge
-     :help "Purge selected packages with APT."]
-    ["Reinstall selected packages" trapt-apt-reinstall
-     :help "Reinstall selected packages with APT."]
-    ["Reinstall selected packages" trapt-apt-remove
-     :help "Remove selected packages with APT."]))
+"Menu when `trapt-list-mode' is active."
+`("TrAPT List"
+  ["Install selected packages" trapt-apt-install
+   :help "Install the selected packages with APT."]
+  ["Purge selected packages" trapt-apt-purge
+   :help "Purge selected packages with APT."]
+  ["Reinstall selected packages" trapt-apt-reinstall
+   :help "Reinstall selected packages with APT."]
+  ["Reinstall selected packages" trapt-apt-remove
+   :help "Remove selected packages with APT."]))
 
 
 ;;; transient menu and helper functions
@@ -240,9 +238,6 @@
     (read-string "Search Term: ")
     (setf trapt-list-search-term)))
 
-
-;;; transient menu
-
 (transient-define-prefix trapt-list--apt-list-transient ()
   "Transient menu for apt list command."
   :value '("--installed")
@@ -250,17 +245,17 @@
    ("H" "host" trapt-select-host
     :transient t
     :description (lambda () (format "Host: %s" trapt-current-host)))]
+  ["Search Term"
+   ("s" "search term" trapt-list-set-search-term
+    :transient t
+    :description (lambda () (concat "Search Term: "
+                                    trapt-list-search-term)))]
   ["Arguments"
    ("a" "all versions" "--all-versions")
    ("i" "installed" "--installed")
    ("u" "upgradable" "--upgradable")]
   ["APT List"
-   ("l" "list" trapt-apt-list)]
-  ["Search Term"
-   ("s" "search term" trapt-list-set-search-term
-    :transient t
-    :description (lambda () (concat "Search Term: "
-                                    trapt-list-search-term)))])
+   ("l" "list" trapt-apt-list)])
 
 
 
