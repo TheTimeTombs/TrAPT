@@ -81,9 +81,9 @@ the variable `trapt-stats-file'."
                do (setf varname (car element))
                (setf variable-value (cdr element))
                (set `,varname variable-value)
-               collect `(,varname . ,variable-value)))
-    (format "%s")
-    (insert)))
+               collect `(,varname . ,variable-value))
+      (format "%s")
+      (insert))))
 
 (defun trapt-utils--read-file (filepath)
   "Read contents from FILEPATH."
@@ -208,17 +208,13 @@ HOST is a string of the form username@host that specifies a host on which
 to run the command."
   ;; Add options from `trapt-utils--apt-options' before
   ;; sending the command to ensure the correct string is returned.
-  (let ((command-string (concat
-                         command
-                         " "
-                         (trapt-utils--list-to-string
-                          trapt-utils--apt-options))))
-    (if (trapt--remotehost-p host)
-        (progn (message "Running: %s on %s" command host)
-               (trapt-utils--run-ssh host
-                                     (shell-command-to-string command-string)))
-      (progn (message "Running: %s" command)
-             (shell-command-to-string command-string)))))
+  (print command)
+  (if (trapt--remotehost-p host)
+      (progn (message "Running: %s on %s" command host)
+             (trapt-utils--run-ssh host
+                                   (shell-command-to-string command)))
+    (progn (message "Running: %s" command)
+           (shell-command-to-string command))))
 
 (provide 'trapt-utils)
 
