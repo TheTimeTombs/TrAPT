@@ -141,10 +141,7 @@ If SUDO is non-nil, then the command will be run with sudo."
                    sudo
                    packages
                    arguments)))
-    (cond ((string= operation "show")
-           (shelly-shell command))
-          (t
-           (shelly-run-command :command command :host host)))))
+    (shelly-run-command :command command :host host)))
 
 (defun trapt--get-packages (packages)
   "Get packages from bui-list-buffer, otherwise return PACKAGES."
@@ -362,35 +359,6 @@ If REMOTE in non-nil, then the user will be prompted for a remote host from
                   :prompt prompt
                   :host trapt-current-host
                   :sudo t))
-
-;;;###autoload
-(cl-defun trapt-apt-show (&key packages arglist (prompt t) remote)
-  "Run apt list. This is a wrapper function for `trapt--execute'.
-
-PACKAGES is a list of packages to upgrade. If no PACKAGES are passed, then the
-user will be prompted for a space-separated string containing the list of
-packages to upgrade.
-
-ARGLIST is a list of arguments to the apt command. If no ARGLIST is passed, then
-the user will be prompted for a space-separated string containing the list of
-arguments to pass.
-
-If PROMPT is nil, then the user will not be prompted for packages and arguments
-if none are given. This should be used for non-interactive calls.
-
-If REMOTE in non-nil, then the user will be prompted for a remote host from
-`trapt-remotes' on which to run `apt show'."
-  (interactive)
-  (get-buffer-create "*APT Show*")
-  (switch-to-buffer "*APT Show*")
-  (erase-buffer)
-  (insert
-   (trapt--execute "show"
-                   :packages (trapt--get-marked-packages packages)
-                   :arglist (trapt--transient-args arglist)
-                   :prompt prompt
-                   :host trapt-current-host
-                   :host nil)))
 
 ;;;###autoload
 (cl-defun trapt-apt-moo (&key remote)
