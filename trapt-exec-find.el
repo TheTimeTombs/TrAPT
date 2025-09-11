@@ -44,6 +44,18 @@
 ;;  "Customization options for TrAPT-Exec-Find."
 ;;  :group 'TrAPT)
 
+
+;;; constants
+
+(defconst trapt-exec-find--mode-name "TrAPT Exec Find"
+  "The name of the mode for `trapt-exec-find-mode'.")
+
+(defconst trapt-exec-find--buffer-name "*TrAPT Exec Find*"
+  "The name of the buffer for `trapt-exec-find-report'.")
+
+
+;;; variables
+
 (defvar trapt-exec-find-list-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map "p" #'trapt-exec-find-goto-path)
@@ -58,19 +70,19 @@
 Each element of the list will be if the form program, version, and package
 manager.")
 
-(defvar trapt-exec-find--mode-name "TrAPT Exec Find"
-  "The name of the mode for `trapt-exec-find-mode'.")
 
-(defvar trapt-exec-find--buffer-name "*TrAPT Exec Find*"
-  "The name of the buffer for `trapt-exec-find-report'.")
-
+
+;;; base functions
 
 (defun trapt-exec-find--progpath (program)
   "Return the program path for PROGRAM or return `not found'."
   (trapt-exec-find--propertize (or (executable-find program) "not found")))
 
+
+;;; define entries
+
 (defun trapt-exec-find--exec->entry (exec)
-  "Return EXEC entry for `trapt-exec-find-list' buffer."
+  "Return for `trapt-exec-find-list' buffer entry for EXEC."
   (let ((item (assoc (format "%s" exec) trapt-exec-find--list)))
     `((id . ,(make-symbol (nth 0 item)))
       (package . ,(nth 0 item))
@@ -95,15 +107,20 @@ used to return the list of executables to display."
     (t (error "Unknown search type: %S" search-type))))
 
 (defun trapt-exec-find--exec-names ()
+  "Return a list of all executable names from `trapt-exec-find--list'."
   (cl-loop for item in trapt-exec-find--list
            collect (car item)))
 
 (defun trapt-exec-find--get-entries (&rest args)
+  
   (mapcar #'trapt-exec-find--exec->entry
           (apply #'trapt-exec-find--get-execs args)))
 
 (bui-define-entry-type trapt-exec-find
   :get-entries-function #'trapt-exec-find--get-entries)
+
+
+;;; info interface
 
 (bui-define-interface trapt-exec-find info
   :format '((package format (format))
@@ -113,10 +130,12 @@ used to return the list of executables to display."
             (package-manager format (format))
             (calling-path format (format))))
 
+
+;;; list interface
+
 (defun trapt-exec-find--describe (&rest execs)
   "Display 'info' buffer for BUFFERS."
   (bui-get-display-entries 'trapt-exec-find 'info (cons 'id execs)))
-
 
 (bui-define-interface trapt-exec-find list
   :mode-name "TrAPT Exec Find"
@@ -131,7 +150,7 @@ used to return the list of executables to display."
   :sort-key '(package)
   :marks '((install . ?I)))
 
-;;; This must come after `bui-define-interface'
+;; This must come after `bui-define-interface'
 (easy-menu-define trapt-exec-find-list-mode-menu trapt-exec-find-list-mode-map
   "Menu when `trapt-exec-find-mode' is active."
   `("TrAPT Exec Find"
