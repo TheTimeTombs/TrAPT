@@ -35,6 +35,7 @@
 
 (require 'bui)
 (require 'easymenu)
+(require 'shelly)
 (require 'trapt-utils)
 (require 'transient)
 
@@ -77,8 +78,9 @@
 
     (thread-last
       (split-string
-       (trapt-utils--shell-command-to-string command
-                                             trapt-current-host)
+       (shelly-command-to-string command
+                                 :host trapt-current-host
+                                 :message t)
        "\n")
       (remove-unwanted-lines)
       (mapcar (lambda (item) (split-string item "[ /]")))
@@ -161,32 +163,30 @@
             (architecture format (format))
             (status format (format))))
 
-(defvar trapt-apt-info-mode-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map "a" #'trapt-org-export-all)
-    (define-key map "m" #'trapt-org-export-marked)
-    (define-key map "x" #'trapt)
-    map)
-  "Keymap for `trapt-apt-list-info-mode'.")
+(defun trapt-list--info-add-keys ()
+  (define-key trapt-apt-info-mode-map "a" #'trapt-org-export-all)
+  (define-key trapt-apt-info-mode-map "m" #'trapt-org-export-marked)
+  (define-key trapt-apt-info-mode-map "x" #'trapt))
 
-(easy-menu-define trapt-apt-info-mode-menu trapt-apt-info-mode-map
-  "Menu when `trapt-list-mode' is active."
-  `("TrAPT List"
-    ["Install selected packages" trapt-apt-install
-     :help "Install the selected packages with APT."]
-    ["Purge selected packages" trapt-apt-purge
-     :help "Purge selected packages with APT."]
-    ["Reinstall selected packages" trapt-apt-reinstall
-     :help "Reinstall selected packages with APT."]
-    ["Reinstall selected packages" trapt-apt-remove
-     :help "Remove selected packages with APT."]))
+(defun trapt-list--info-add-menu ()
+  (easy-menu-define trapt-apt-info-mode-menu trapt-apt-info-mode-map
+    "Menu when `trapt-apt-info-mode' is active."
+    `("Package Info"
+      ["Install selected packages" trapt-apt-install
+       :help "Install the selected packages with APT."]
+      ["Purge selected packages" trapt-apt-purge
+       :help "Purge selected packages with APT."]
+      ["Reinstall selected packages" trapt-apt-reinstall
+       :help "Reinstall selected packages with APT."]
+      ["Reinstall selected packages" trapt-apt-remove
+       :help "Remove selected packages with APT."])))
 
 
 ;; list interface
 
 (defun trapt-apt-list--describe (&rest packages)
-"Display entries for PACKAGES "
-(bui-get-display-entries 'trapt-apt 'info (cons 'id packages)))
+  "Display entries for PACKAGES "
+  (bui-get-display-entries 'trapt-apt 'info (cons 'id packages)))
 
 (bui-define-interface trapt-apt list
   :mode-name trapt-list--mode-name
@@ -200,25 +200,23 @@
   :sort-key '(package)
   :marks '((install . ?I)))
 
-(defvar trapt-apt-list-mode-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map "a" #'trapt-org-export-all)
-    (define-key map "m" #'trapt-org-export-marked)
-    (define-key map "x" #'trapt)
-    map)
-  "Keymap for `trapt-apt-list-mode'.")
+(defun trapt-list--list-add-keys ()
+  (define-key trapt-apt-list-mode-map "a" #'trapt-org-export-all)
+  (define-key trapt-apt-list-mode-map "m" #'trapt-org-export-marked)
+  (define-key trapt-apt-list-mode-map "x" #'trapt))
 
-(easy-menu-define trapt-apt-list-mode-menu trapt-apt-list-mode-map
-"Menu when `trapt-list-mode' is active."
-`("TrAPT List"
-  ["Install selected packages" trapt-apt-install
-   :help "Install the selected packages with APT."]
-  ["Purge selected packages" trapt-apt-purge
-   :help "Purge selected packages with APT."]
-  ["Reinstall selected packages" trapt-apt-reinstall
-   :help "Reinstall selected packages with APT."]
-  ["Reinstall selected packages" trapt-apt-remove
-   :help "Remove selected packages with APT."]))
+(defun trapt-list--list-add-menu ()
+  (easy-menu-define trapt-apt-list-mode-menu trapt-apt-list-mode-map
+    "Menu when `trapt-apt-list-mode' is active."
+    `("Pakcage List"
+      ["Install selected packages" trapt-apt-install
+       :help "Install the selected packages with APT."]
+      ["Purge selected packages" trapt-apt-purge
+       :help "Purge selected packages with APT."]
+      ["Reinstall selected packages" trapt-apt-reinstall
+       :help "Reinstall selected packages with APT."]
+      ["Reinstall selected packages" trapt-apt-remove
+       :help "Remove selected packages with APT."])))
 
 
 ;;; transient menu and helper functions
@@ -261,6 +259,10 @@ ARGLIST is a list of arguments to the apt command. If no ARGLIST is passed, then
 the user will be prompted for a space-separated string containing the list of
 arguments to pass."
   (interactive)
+  (trapt-list--list-add-keys)
+  (trapt-list--list-add-menu)
+  (trapt-list--info-add-keys)
+  (trapt-list--info-add-menu)
   (thread-last
     (trapt-utils--build-command-string "list -o \"apt::color=no\""
                                        nil
@@ -269,9 +271,6 @@ arguments to pass."
                                        (trapt--transient-args arglist))
     (trapt-list--generate))
   (bui-get-display-entries 'trapt-apt 'list))
-
-(eval-after-load "trapt-list"
-  '(add-to-list 'trapt--package-list-buffers trapt-list--buffer-name))
 
 (provide 'trapt-list)
 
