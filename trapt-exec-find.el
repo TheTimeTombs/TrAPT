@@ -56,20 +56,10 @@
 
 ;;; variables
 
-(defvar trapt-exec-find-list-mode-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map "p" #'trapt-exec-find-goto-path)
-    (define-key map "c" #'trapt-exec-find-goto-call)
-    (when (fboundp 'trapt)
-      (define-key map "x" #'trapt))
-    map)
-  "Keymap for `trapt-exec-find-mode'.")
-
 (defvar trapt-exec-find--list nil
   "A list of executable programs for `trapt-exec-find-report'.
 Each element of the list will be if the form program, version, and package
 manager.")
-
 
 
 ;;; base functions
@@ -150,6 +140,11 @@ used to return the list of executables to display."
   :sort-key '(package)
   :marks '((install . ?I)))
 
+(let ((map (make-sparse-keymap)))
+  (define-key map "p" #'trapt-exec-find-goto-path)
+  (define-key map "c" #'trapt-exec-find-goto-call)
+  (define-key map "x" #'trapt))
+
 ;; This must come after `bui-define-interface'
 (easy-menu-define trapt-exec-find-list-mode-menu trapt-exec-find-list-mode-map
   "Menu when `trapt-exec-find-mode' is active."
@@ -227,9 +222,6 @@ manage this package. Currently, this if for reference purposes only."
   "Generate a report of all packages identified with `trapt-exec-find'."
   (interactive)
   (bui-get-display-entries 'trapt-exec-find 'list))
-
-(eval-after-load "trapt-exec-find"
-  '(add-to-list 'trapt--package-list-buffers trapt-exec-find--buffer-name))
 
 (provide 'trapt-exec-find)
 
