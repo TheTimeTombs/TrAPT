@@ -105,8 +105,9 @@ STATUS is a string from the status column of APT list."
 The format of the Org entries the output format for the org mode is determined
 by the variable `trapt-list-org-export-format'."
   (interactive)
-  (let ((entries (tablist-get-marked-items)))
-    (when (string= (buffer-name) trapt-apt-list-buffer-name)
+  (when (string= (buffer-name) trapt-apt-list-buffer-name)
+    (let* ((names (mapcar (lambda (item) (car item)) (bui-list-get-marked)))
+           (entries (mapcar (lambda (name) (assoc name tabulated-list-entries)) names)))
       (trapt-org--apt->org entries))))
 
 (defun trapt-org-export-all ()
@@ -114,14 +115,14 @@ by the variable `trapt-list-org-export-format'."
 The format of the Org entries the output format for the org mode is determined
 by the variable `trapt-list-org-export-format'."
   (interactive)
-  (let ((entries tabulated-list-entries))
-    (when (string= (buffer-name) trapt-apt-list-buffer-name)
+  (when (string= (buffer-name) trapt-apt-list-buffer-name)
+    (let ((entries tabulated-list-entries))
       (trapt-org--apt->org entries))))
 
 (defun trapt-org--generate-custom-todos ()
   "Generate custom TODO header for trapt exported Org mode files."
   (format "#+TODO: %s | %s"
-          (mapconcat #'cdr trapt-org-todo-keywords " ")
+          (mapconcat #'car trapt-org-todo-keywords " ")
           trapt-org-done-keyword))
 
 ;;;###autoload
@@ -135,9 +136,11 @@ When an operation is chosen, a that APT operation with be executed on the
 package names in the current org mode buffer marked with the todo keyword from
 `trapt-org-todo-keywords' that corresponds to the OPERATION value."
   (interactive)
-  (let* ((function (completing-read "APT operation: "
-                                    (mapcar #'cdr
-                                            trapt-org-todo-keywords)))
+  (let* ((tag (completing-read "APT operation: "
+                               (mapcar #'car
+                                       trapt-org-todo-keywords)))
+         
+         (function (cdr (assoc tag trapt-org-todo-keywords)))
          (packages (mapconcat (lambda (item) (concat item " "))
                               (org-map-entries
                                (lambda ()
