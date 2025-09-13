@@ -53,7 +53,11 @@
                                      ("REMOVE" . trapt-apt-remove)
                                      ("PURGE" . trapt-apt-purge)
                                      ("UPGRADE" . trapt-apt-upgrade))
-  "Custom Org mode TODO keywords ."
+  "Custom Org mode TODO keywords for Org mode buffers with APT pacckages.
+The TODO keywords are given as an alist in the form of '(keyword . function)
+where keyword is a string representing the Org TODO keyword and the function is
+an unquoted symbol for the `trapt-apt' function to call for entries with the
+keyword when `trapt-org-execute' is called."
   :group 'TrAPT-Org
   :type '(repeat alist))
 
@@ -90,6 +94,7 @@ STATUS is a string from the status column of APT list."
                   "\n\n")))
 
 (defun trapt-org--apt->org (entries)
+  "Format and insert`trapt-apt-list' ENTRIES into a new Org buffer."
   (cl-loop for item in entries
            initially (trapt-org--init-buffer)
            do (insert (format trapt-org-export-format
