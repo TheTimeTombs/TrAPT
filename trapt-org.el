@@ -39,7 +39,6 @@
 (require 'org)
 (require 'tablist)
 (require 'trapt-list)
-(require 'trapt-utils)
 
 (defgroup trapt-org nil "Customization options for TrAPT-Org."
   :group 'trapt
@@ -48,12 +47,12 @@
 (defvar trapt-org--buffer-name "APT List Org Export"
   "The name of the buffer after exporting `trapt-list' to Org.")
 
-(defcustom trapt-org-todo-keywords '(("full-upgrade" . "FULL-UPGRADE")
-                                     ("install" . "INSTALL")
-                                     ("reinstall" . "REINSTALL")
-                                     ("remove" . "REMOVE")
-                                     ("purge" . "PURGE")
-                                     ("upgrade" . "UPGRADE"))
+(defcustom trapt-org-todo-keywords '(("FULL-UPGRADE" . trapt-apt-full-upgrade)
+                                     ("INSTALL" . trapt-apt-install)
+                                     ("REINSTALL" . trapt-apt-reinstall)
+                                     ("REMOVE" . trapt-apt-remove)
+                                     ("PURGE" . trapt-apt-purge)
+                                     ("UPGRADE" . trapt-apt-upgrade))
   "Custom Org mode TODO keywords ."
   :group 'TrAPT-Org
   :type '(repeat alist))
@@ -136,22 +135,16 @@ When an operation is chosen, a that APT operation with be executed on the
 package names in the current org mode buffer marked with the todo keyword from
 `trapt-org-todo-keywords' that corresponds to the OPERATION value."
   (interactive)
-  (trapt-utils--check-mode
-   "Org"
-   (let* ((operation (completing-read "APT operation: "
-                                      (mapcar #'car
-                                              trapt-org-todo-keywords)))
-          (tag (cdr (assoc operation trapt-org-todo-keywords)))
-          (packages (trapt-utils--list-to-string
-                     (org-map-entries
-                      (lambda ()
-                        (nth 4
-                             (org-heading-components)))
-                      (format "TODO=\"%s\"" tag))))
-          (shell (bound-and-true-p trapt-shell))
-          (command (trapt-utils--build-command-string operation
-                                                      packages)))
-     (trapt-utils--run-command command shell))))
+  (let* ((function (completing-read "APT operation: "
+                                    (mapcar #'cdr
+                                            trapt-org-todo-keywords)))
+         (packages (mapconcat (lambda (item) (concat item " "))
+                              (org-map-entries
+                               (lambda ()
+                                 (nth 4
+                                      (org-heading-components)))
+                               (format "TODO=\"%s\"" tag)))))
+    (eval `(,function :packages ,packages :arglist ""))))
 
 (provide 'trapt-org)
 

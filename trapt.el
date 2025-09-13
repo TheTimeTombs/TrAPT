@@ -33,7 +33,6 @@
 (require 'shelly)
 (require 'transient)
 (require 'tablist)
-(require 'trapt-utils)
 (require 'trapt-exec-find)
 (require 'trapt-list)
 (require 'trapt-org)
@@ -55,6 +54,11 @@
 
 
 ;;; variables
+
+(defvar trapt--apt-options '("-o \"apt::color=no\"")
+  "A list of options to always pass to APT -o.
+These options in these arguments are essential to ensure
+proper parsing of the results that are returned from APT.")
 
 (defvar trapt-current-host trapt-default-host
   "The current host to run TrAPT commands.")
@@ -100,6 +104,32 @@
                      0
                      16)))
 
+(defun trapt--build-command-string (operation
+                                    &optional
+                                    sudo
+                                    packages
+                                    arguments)
+  "Concatenates the elements of an APT command string.
+
+OPERATION is a string containing a command for the APT package tool.
+
+If SUDO is non-nil then the command will be called with `sudo'.
+
+PACKAGES is list or space-separated string of packages to upgrade.
+
+ARGUMENTS is a list or space-separated string of arguments to the apt command.
+If no ARGUMENTS is passed, then the user will be prompted for a space-separated
+string containing the list of arguments to pass."
+  (thread-last
+    (when arguments
+      (concat " " arguments))
+    (concat (when packages
+              (concat " " packages)))
+    (concat " " operation)
+    (concat (if sudo
+                "sudo apt"
+              "apt"))))
+
 (cl-defun trapt--execute (operation &key packages arglist (prompt t) host sudo)
   "Run an APT command from an inferior shell.
 
@@ -136,7 +166,7 @@ If SUDO is non-nil, then the command will be run with sudo."
 (space separated): "
                                         operation)))
                         ""))
-         (command (trapt-utils--build-command-string
+         (command (trapt--build-command-string
                    operation
                    sudo
                    packages
@@ -152,7 +182,7 @@ If SUDO is non-nil, then the command will be run with sudo."
         (thread-last
           (bui-list-get-marked)
           (mapcar (lambda (item) (symbol-name (car item))))
-          (trapt-utils--list-to-string)))))
+          (mapconcat (lambda (item) (concat item " ")))))))
 
 ;;;###autoload
 (cl-defun trapt-apt-install (&key packages arglist (prompt t))

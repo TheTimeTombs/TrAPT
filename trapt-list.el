@@ -36,7 +36,6 @@
 (require 'bui)
 (require 'easymenu)
 (require 'shelly)
-(require 'trapt-utils)
 (require 'transient)
 
 

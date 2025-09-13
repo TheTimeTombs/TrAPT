@@ -38,11 +38,6 @@
 
 
 (require 'bui)
-(require 'trapt-utils)
-
-;;(defgroup trapt-exec-find nil
-;;  "Customization options for TrAPT-Exec-Find."
-;;  :group 'TrAPT)
 
 
 ;;; constants
