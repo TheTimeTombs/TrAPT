@@ -101,10 +101,10 @@ used to return the list of executables to display."
   (cl-loop for item in trapt-exec-find--list
            collect (car item)))
 
-(defun trapt-exec-find--get-entries (&rest args)
-  
+(defun trapt-exec-find--get-entries (&rest execs )
+  "Return `trapt-exec-find' entries for EXECS."
   (mapcar #'trapt-exec-find--exec->entry
-          (apply #'trapt-exec-find--get-execs args)))
+          (apply #'trapt-exec-find--get-execs execs)))
 
 (bui-define-entry-type trapt-exec-find
   :get-entries-function #'trapt-exec-find--get-entries)
@@ -124,7 +124,7 @@ used to return the list of executables to display."
 ;;; list interface
 
 (defun trapt-exec-find--describe (&rest execs)
-  "Display 'info' buffer for BUFFERS."
+  "Display 'info' buffer for EXECS."
   (bui-get-display-entries 'trapt-exec-find 'info (cons 'id execs)))
 
 (bui-define-interface trapt-exec-find list
