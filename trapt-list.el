@@ -245,11 +245,12 @@ the user will be prompted for a space-separated string containing the list of
 arguments to pass."
   (interactive)
   (thread-last
-    (trapt-utils--build-command-string "list -o \"apt::color=no\""
-                                       nil
-                                       (or search-term
-                                           trapt-list-search-term)
-                                       (trapt--transient-args arglist))
+    (trapt--transient-args arglist)
+    (mapconcat (lambda (item) (concat item " ")))
+    (concat "apt list -o \"apt::color=no\" "
+            nil
+            (or search-term
+                trapt-list-search-term))
     (trapt-list--generate))
   (bui-get-display-entries 'trapt-apt 'list))
 
