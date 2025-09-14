@@ -3,7 +3,7 @@
 ;; Author: Thomas Freeman
 ;; Maintainer: Thomas Freeman
 ;; Version: 2.0
-;; Package-Requires: ((emacs "24.4") (easymenu) (bui))
+;; Package-Requires: ((emacs "24.4") (bui "20210108.1141") (shelly "1.0"))
 ;; Homepage: https://github.com/tfree87/trapt
 ;; Keywords: processes
 
@@ -63,7 +63,8 @@
 ;;; general functions
 
 (defun trapt-list--generate (command)
-  "Create an entry list for `bui-define-interface'."
+  "Create an entry list for `bui-define-interface'.
+COMMAND."
   (cl-labels
       ((remove-unwanted-lines (apt-lines-list)
          "Remove unwanted items from APT-LINES-LIST."
@@ -138,7 +139,10 @@
            collect (car item)))
 
 (defun trapt-list--get-packages (&optional search-type &rest search-values)
-  
+  "Generate the list of search terms for trapt-apt entries.
+If SEARCH-TYPE is 'all, then return a list of all `trapt-apt' entry IDs.
+
+If SEARCH-TYPE is 'id, then return the list SEARCH-VALUES."
   (or search-type (setf search-type 'all))
   (cl-case search-type
     (all (trapt-list--package-names))
@@ -146,6 +150,9 @@
     (t (error "Unknown search type: %S" search-type))))
 
 (defun trapt-list--get-entries (&rest args)
+  "Return a list of `trapt-apt' entry types.
+
+ARGS must be a series of `trapt-apt' entry type IDs to return."
   (mapcar #'trapt-list--package->entry
           (apply #'trapt-list--get-packages args)))
 
@@ -166,7 +173,7 @@
 ;; list interface
 
 (defun trapt-apt-list--describe (&rest packages)
-  "Display entries for PACKAGES "
+  "Display entries for PACKAGES in an info buffer."
   (bui-get-display-entries 'trapt-apt 'info (cons 'id packages)))
 
 (bui-define-interface trapt-apt list
