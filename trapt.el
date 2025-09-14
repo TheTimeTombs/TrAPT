@@ -450,7 +450,8 @@ If REMOTE in non-nil, then the user will be prompted for a remote host from
   (if (bound-and-true-p transient-current-command)
       ;; Return transient args
       ;; or an empty string to prevent unwanted prompts for args
-      (or (transient-args transient-current-command) "")
+      (or (mapconcat #' identity (transient-args transient-current-command) " ")
+          "")
     arglist))
 
 
@@ -491,6 +492,7 @@ If REMOTE in non-nil, then the user will be prompted for a remote host from
    ("s" "simulate" "--simulate")
    ("y" "assume yes" "--assume-yes")]
   ["APT Install"
+   ("b" "install build deps" trapt-apt-build-dep)
    ("i" "install" trapt-apt-install)])
 
 (transient-define-prefix trapt--apt-remove-transient ()
