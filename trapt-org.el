@@ -48,6 +48,7 @@
   "The name of the buffer after exporting `trapt-list' to Org.")
 
 (defcustom trapt-org-todo-keywords '(("FULL-UPGRADE" . trapt-apt-full-upgrade)
+                                     ("BUILD-DEP" . trapt-apt-build-dep)
                                      ("INSTALL" . trapt-apt-install)
                                      ("REINSTALL" . trapt-apt-reinstall)
                                      ("REMOVE" . trapt-apt-remove)
