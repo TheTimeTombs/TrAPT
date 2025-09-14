@@ -222,7 +222,7 @@ If PROMPT is nil, then the user will not be prompted for packages and arguments
 if none are given. This should be used for non-interactive calls."
   (interactive)
   (trapt--execute "reinstall"
-                  :packages (trapt--get-marked-packages packages)
+                  :packages (trapt--get-packages packages)
                   :arglist (trapt--transient-args arglist)
                   :prompt prompt
                   :host trapt-current-host
@@ -244,7 +244,7 @@ If PROMPT is nil, then the user will not be prompted for packages and arguments
 if none are given. This should be used for non-interactive calls."
   (interactive)
   (trapt--execute "remove"
-                  :packages (trapt--get-marked-packages packages)
+                  :packages (trapt--get-packages packages)
                   :arglist (trapt--transient-args arglist)
                   :prompt prompt
                   :host trapt-current-host
@@ -283,7 +283,7 @@ If PROMPT is nil, then the user will not be prompted for packages and arguments
 if none are given. This should be used for non-interactive calls."
   (interactive)
   (trapt--execute "purge"
-                  :packages (trapt--get-marked-packages packages)
+                  :packages (trapt--get-packages packages)
                   :arglist (trapt--transient-args arglist)
                   :prompt prompt
                   :host trapt-current-host
@@ -344,7 +344,7 @@ If REMOTE in non-nil, then the user will be prompted for a remote host from
 `trapt-remotes' on which to run `apt build-dep'."
   (interactive)
   (trapt--execute "build-dep"
-                  :packages (trapt--get-marked-packages packages)
+                  :packages (trapt--get-packages packages)
                   :arglist (trapt--transient-args arglist)
                   :prompt prompt
                   :host trapt-current-host
@@ -408,9 +408,9 @@ If REMOTE in non-nil, then the user will be prompted for a remote host from
 (cl-defun trapt-apt-edit-sources ()
   "Opens `/etc/apt/sources.list' for editing as root user using tramp."
   (interactive)
-  (let* ((host (if (trapt--transient-remote remote)
-                   (format "ssh:%s|" (trapt--get-host t))
-                 ""))
+  (let* ((host (if (shelly-localhost-p trapt-current-host)
+                   ""
+                 (format "ssh:%s|" trapt-current-host)))
          (path (format "/%ssudo::%s"
                        host
                        trapt-apt-sourcelist-file-path)))
