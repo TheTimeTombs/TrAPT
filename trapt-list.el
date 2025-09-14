@@ -2,8 +2,8 @@
 
 ;; Author: Thomas Freeman
 ;; Maintainer: Thomas Freeman
-;; Version: 1.2
-;; Package-Requires: ((emacs "24.4") (easymenu) (tablist))
+;; Version: 2.0
+;; Package-Requires: ((emacs "24.4") (bui "20210108.1141") (shelly "1.0"))
 ;; Homepage: https://github.com/tfree87/trapt
 ;; Keywords: processes
 
@@ -32,80 +32,175 @@
 
 ;;; Code:
 
+
+(require 'bui)
 (require 'easymenu)
-(require 'tablist)
-(require 'trapt-utils)
+(require 'shelly)
+(require 'transient)
 
-(defgroup trapt-list nil
-  "TrAPT preferences for working with APT list."
-  :group 'TrAPT
-  :prefix "trapt-list-")
+
+;;; constants
 
-(defcustom trapt-list-default-sort-key '("Name" . nil)
-  "Sort key for for sorting results returned from apt list.
+(defconst trapt-list--buffer-name "*APT List*"
+  "The name of the buffer created for APT List Mode.")
 
-This should be a cons cell (NAME . FLIP) where NAME is a string matching one of
-the column names from `trapt-list--columns' and FLIP is a boolean to specify
-the sort order."
-  :group 'trapt-list
-  :type '(cons (string :tag "Column Name"
-                       :validate (lambda (widget)
-                                   (unless (member
-                                            (widget-value widget)
-                                            trapt-list--columns)
-                                     (widget-put widget
-                                                 (error "Default Sort Key must\
- match a column name"))
-                                     widget)))
-               (choice (const :tag "Ascending" nil)
-                       (const :tag "Descending" t))))
+(defconst trapt-list--mode-name "TrAPT List"
+  "The name of `trapt-list-mode' buffer.")
+
+
+;;; variables
 
 (defvar trapt-list--current-command nil
   "The command used to generate the current list.")
 
-(defvar trapt-list--tabulated-list-format [("Name" 30 t)
-                                           ("Source" 25 t)
-                                           ("Version" 15 t)
-                                           ("Architecture" 8 t)
-                                           ("Status" 50 t (:right-align t))]
-  "The `tabulated-list-format' for TrAPT List buffers.")
-
-(defvar trapt-list-mode-map
-  (let ((map (make-sparse-keymap)))
-    (when (fboundp #'trapt)
-      (define-key map "a" #'trapt-org-export-all)
-      (define-key map "m" #'trapt-org-export-marked)
-      (define-key map "x" #'trapt))
-    map)
-  "Keymap for `trapt-list-mode'.")
-
-(defvar trapt-list--columns '("Name" "Version" "Architecture" "Status")
-  "A list of column names for `trapt-list-mode'.")
-
-(defvar trapt-list--buffer-name "*APT List*"
-  "The name of the buffer created for APT List Mode.")
-
-(defvar trapt-list--mode-name "TrAPT List"
-  "The name of `trapt-list-mode' buffer.")
-
-(defvar trapt-list--num-installed nil
-  "The number of installed APT packages.")
-
-(defvar trapt-list--num-upgradable nil
-  "The number of upgradable APT packages.")
-
-(defvar trapt-list--num-residual nil
-  "The number of APT packages with residual data.")
-
-(defvar trapt-list--num-auto-intalled nil
-  "The number of automatically installed APT packages.")
+(defvar trapt-list-search-term nil
+  "The command used to generate the current list.")
 
 (defvar trapt-list--entries nil
   "A list of all the APT List entries for `tabulated-list-entries'.")
 
-(easy-menu-define trapt-list-mode-menu trapt-list-mode-map
-  "Menu when `trapt-list-mode' is active."
-  `("TrAPT List"
+
+;;; general functions
+
+(defun trapt-list--generate (command)
+  "Create an entry list for `bui-define-interface'.
+COMMAND."
+  (cl-labels
+      ((remove-unwanted-lines (apt-lines-list)
+         "Remove unwanted items from APT-LINES-LIST."
+         (cl-remove-if (lambda (item)
+                         (or (string-empty-p item)
+                             (string-prefix-p "N:" item)
+                             (string-prefix-p "WARNING:" item)
+                             (string-prefix-p "Listing" item)
+                             (string-prefix-p "Listing..." item)))
+                       apt-lines-list)))
+
+    (thread-last
+      (split-string
+       (shelly-command-to-string command
+                                 :host trapt-current-host
+                                 :message t)
+       "\n")
+      (remove-unwanted-lines)
+      (mapcar (lambda (item) (split-string item "[ /]")))
+      (setf trapt-list--entries))))
+
+
+;; Create apt entry type
+
+(defun trapt-list--package->entry (package)
+  "Return entry for `PACKAGE' from ."
+  (let ((item (assoc (format "%s" package) trapt-list--entries)))
+    (if (= (length item) 4)
+        `((id . ,(make-symbol (nth 0 item)))
+          (package . ,(nth 0 item))
+          (source . ,(nth 1 item))
+          (version . ,(nth 2 item))
+          (architecture . ,(nth 3 item))
+          ;; The following will be used in `info' interfaces
+          (status . "none")
+          (version . "unknown")
+          (priority . "unknown")
+          (essential . "unknown")
+          (section . "unknown")
+          (maintainer . "unknown")
+          (installed-size . "unknown")
+          (provides . "unknown")
+          (depends . "unknown")
+          (download-size . "unknown")
+          (apt-manual-installed . "unknown")
+          (apt-sources . "unknown")
+          (description . "unknown"))
+      `((id . ,(make-symbol (nth 0 item)))
+        (package . ,(nth 0 item))
+        (source . ,(nth 1 item))
+        (version . ,(nth 2 item))
+        (architecture . ,(nth 3 item))
+        (status . ,(nth 4 item))
+        ;; The following will be used in `info' interfaces
+        (status . "none")
+        (version . "unknown")
+        (priority . "unknown")
+        (essential . "unknown")
+        (section . "unknown")
+        (maintainer . "unknown")
+        (installed-size . "unknown")
+        (provides . "unknown")
+        (depends . "unknown")
+        (download-size . "unknown")
+        (apt-manual-installed . "unknown")
+        (apt-sources . "unknown")
+        (description . "unknown")))))
+
+(defun trapt-list--package-names ()
+  "Returns a list of all package names from `trapt-list--entries'."
+  (cl-loop for item in trapt-list--entries
+           collect (car item)))
+
+(defun trapt-list--get-packages (&optional search-type &rest search-values)
+  "Generate the list of search terms for trapt-apt entries.
+If SEARCH-TYPE is 'all, then return a list of all `trapt-apt' entry IDs.
+
+If SEARCH-TYPE is 'id, then return the list SEARCH-VALUES."
+  (or search-type (setf search-type 'all))
+  (cl-case search-type
+    (all (trapt-list--package-names))
+    (id search-values)
+    (t (error "Unknown search type: %S" search-type))))
+
+(defun trapt-list--get-entries (&rest args)
+  "Return a list of `trapt-apt' entry types.
+
+ARGS must be a series of `trapt-apt' entry type IDs to return."
+  (mapcar #'trapt-list--package->entry
+          (apply #'trapt-list--get-packages args)))
+
+(bui-define-entry-type trapt-apt
+  :get-entries-function #'trapt-list--get-entries)
+
+
+;;; info interface
+
+(bui-define-interface trapt-apt info
+  :format '((package format (format))
+            (source format (format))
+            (version format (format))
+            (architecture format (format))
+            (status format (format))))
+
+
+;; list interface
+
+(defun trapt-apt-list--describe (&rest packages)
+  "Display entries for PACKAGES in an info buffer."
+  (bui-get-display-entries 'trapt-apt 'info (cons 'id packages)))
+
+(bui-define-interface trapt-apt list
+  :mode-name trapt-list--mode-name
+  :buffer-name trapt-list--buffer-name
+  :describe-function #'trapt-apt-list--describe
+  :format '((package nil 20 t)
+            (source nil 20 t)
+            (version nil 20 t)
+            (architecture nil 20 t)
+            (status nil 20 t))
+  :sort-key '(package)
+  :marks '((install . ?I)))
+
+(let ((map trapt-apt-list-mode-map))
+  (define-key map "a" #'trapt-org-export-all)
+  (define-key map "e" #'trapt-org-export-marked)
+  (define-key map "x" #'trapt))
+
+(defvar buffers-list-default-hint
+  '(("\\[trapt-org-export-all]") " export all to Org mode;\n"
+    ("\\[trapt-org-export-marked]") " export selected to Org mode;\n"
+    ("\\[trapt]") " run TrAPT using selected entries\n"))
+
+(easy-menu-define trapt-apt-list-mode-menu trapt-apt-list-mode-map
+  "Menu when `trapt-apt-list-mode' is active."
+  `("Pakcage List"
     ["Install selected packages" trapt-apt-install
      :help "Install the selected packages with APT."]
     ["Purge selected packages" trapt-apt-purge
@@ -115,94 +210,56 @@ the sort order."
     ["Reinstall selected packages" trapt-apt-remove
      :help "Remove selected packages with APT."]))
 
-(defun trapt-list--get-stats ()
-  "Return a list of statistics from APT list."
+
+;;; transient menu and helper functions
+
+(defun trapt-list-set-search-term ()
+  "Prompt the user for `trapt-list-search-term' and set it."
+  (interactive)
   (thread-last
-    (cl-loop for element in tabulated-list-entries
-             when  (string-match "upgradable" (aref (cadr element) 4))
-             count element into num-upgradable
-             when (string-match "installed" (aref (cadr element) 4))
-             count element into num-installed
-             when (string-match "residual-config" (aref (cadr element) 4))
-             count element into num-residual
-             when (string-match "automatic" (aref (cadr element) 4))
-             count element into num-auto
-             finally
-             return
-             (if (not (string-match "--upgradable" trapt-list--current-command))
-                 (cl-values `(trapt-list--num-installed . ,num-installed)
-                            `(trapt-list--num-upgradable . ,num-upgradable)
-                            `(trapt-list--num-residual . ,num-residual)
-                            `(trapt-list--num-auto-installed . ,num-auto))
-               ;; Only update upgradable stat if that list is called
-               (cl-values`(trapt-list--num-upgradable . ,num-upgradable))))
-    (trapt-utils--set-save-stats)))
+    (read-string "Search Term: ")
+    (setf trapt-list-search-term)))
 
-(defun trapt-list--create-tablist (command &optional host)
-  "Call `trapt-list--apt-list-to-tablist' and create a tablist buffer.
+(transient-define-prefix trapt-list--apt-list-transient ()
+  "Transient menu for apt list command."
+  :value '("--installed")
+  ["Host"
+   ("H" "host" trapt-select-host
+    :transient t
+    :description (lambda () (format "Host: %s" trapt-current-host)))]
+  ["Search Term"
+   ("s" "search term" trapt-list-set-search-term
+    :transient t
+    :description (lambda () (concat "Search Term: "
+                                    trapt-list-search-term)))]
+  ["Arguments"
+   ("a" "all versions" "--all-versions")
+   ("i" "installed" "--installed")
+   ("u" "upgradable" "--upgradable")]
+  ["APT List"
+   ("l" "list" trapt-apt-list)])
 
-The buffer contains the result of `apt list' run from in an inferior shell.
-
-COMMAND must be a string with the form `sudo apt list [arguments]'.
-
-HOST is a string of the form username@host that specifies a host on which
-to run the command."
-  (cl-labels
-      ((add-trapt-list--buffer-name-to-trapt-list--tablist-buffers ()
-         "Add `trapt-list--buffer-name' to `trapt--tablist-buffers'."
-         (when (boundp 'trapt--tablist-buffers)
-           (if trapt--tablist-buffers
-               (add-to-list 'trapt--tablist-buffers
-                            trapt-list--buffer-name)
-             (push trapt-list--buffer-name trapt--tablist-buffers))))
-       
-       (remove-unwanted-lines (apt-lines-list)
-         "Remove unwanted messages from APT-LINES-LIST."
-         (cl-remove-if (lambda (item)
-                         (or (string-empty-p item)
-                             (string-prefix-p "N:" item)
-                             (string-prefix-p "WARNING:" item)
-                             (string-prefix-p "Listing" item)
-                             (string-prefix-p "Listing..." item)))
-                       apt-lines-list))
-       
-       (apt-output-to-list (apt-output)
-         "Split APT-OUTPUT string to a list and removed unwanted lines."
-         (thread-last
-           (split-string apt-output "\n")
-           (remove-unwanted-lines)
-           (mapcar #'(lambda (item) (split-string item  "[ /]")))))
-       
-       (lines-to-entries (apt-output-list)
-         "Convert each line from APT-LINES list to an entry"
-         (cl-loop for line in apt-output-list
-                  for counter from 1
-                  collect (if (= (length line) 4)
-                              `(,counter [,@line "none"])
-                            `(,counter [,@line])))))
-
-    (setf trapt-list--current-command command)
-    (with-current-buffer (get-buffer-create trapt-list--buffer-name)
-      (trapt-list-mode)
-      (add-trapt-list--buffer-name-to-trapt-list--tablist-buffers)
-      (setf tabulated-list-format trapt-list--tabulated-list-format)
-      (setf tabulated-list-sort-key trapt-list-default-sort-key)
-      (tabulated-list-init-header)
-      (thread-last
-        (trapt-utils--shell-command-to-string command host)
-        (apt-output-to-list)
-        (lines-to-entries)
-        (setf trapt-list--entries)
-        (setf tabulated-list-entries))
-      (revert-buffer))
-    (switch-to-buffer trapt-list--buffer-name)))
+
 
 ;;;###autoload
-(define-derived-mode trapt-list-mode tabulated-list-mode trapt-list--mode-name
-  "Major mode for interacting with a list of packages from APT."
-  :keymap trapt-list-mode-map
-  (setf tabulated-list-padding 2)
-  (tablist-minor-mode))
+(cl-defun trapt-apt-list (&key search-term arglist)
+  "Run apt list. This is a wrapper function for `trapt--execute'.
+
+SEARCH-TERM is a string to pass to `apt list' to search.
+
+ARGLIST is a list of arguments to the apt command. If no ARGLIST is passed, then
+the user will be prompted for a space-separated string containing the list of
+arguments to pass."
+  (interactive)
+  (thread-last
+    (trapt--transient-args arglist)
+    (mapconcat (lambda (item) (concat item " ")))
+    (concat "apt list -o \"apt::color=no\" "
+            nil
+            (or search-term
+                trapt-list-search-term))
+    (trapt-list--generate))
+  (bui-get-display-entries 'trapt-apt 'list))
 
 (provide 'trapt-list)
 

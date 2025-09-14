@@ -39,7 +39,6 @@
 (require 'org)
 (require 'tablist)
 (require 'trapt-list)
-(require 'trapt-utils)
 
 (defgroup trapt-org nil "Customization options for TrAPT-Org."
   :group 'trapt
@@ -48,13 +47,18 @@
 (defvar trapt-org--buffer-name "APT List Org Export"
   "The name of the buffer after exporting `trapt-list' to Org.")
 
-(defcustom trapt-org-todo-keywords '(("full-upgrade" . "FULL-UPGRADE")
-                                     ("install" . "INSTALL")
-                                     ("reinstall" . "REINSTALL")
-                                     ("remove" . "REMOVE")
-                                     ("purge" . "PURGE")
-                                     ("upgrade" . "UPGRADE"))
-  "Custom Org mode TODO keywords ."
+(defcustom trapt-org-todo-keywords '(("FULL-UPGRADE" . trapt-apt-full-upgrade)
+                                     ("BUILD-DEP" . trapt-apt-build-dep)
+                                     ("INSTALL" . trapt-apt-install)
+                                     ("REINSTALL" . trapt-apt-reinstall)
+                                     ("REMOVE" . trapt-apt-remove)
+                                     ("PURGE" . trapt-apt-purge)
+                                     ("UPGRADE" . trapt-apt-upgrade))
+  "Custom Org mode TODO keywords for Org mode buffers with APT pacckages.
+The TODO keywords are given as an alist in the form of '(keyword . function)
+where keyword is a string representing the Org TODO keyword and the function is
+an unquoted symbol for the `trapt-apt' function to call for entries with the
+keyword when `trapt-org-execute' is called."
   :group 'TrAPT-Org
   :type '(repeat alist))
 
@@ -90,46 +94,41 @@ STATUS is a string from the status column of APT list."
   (insert (concat (trapt-org--generate-custom-todos)
                   "\n\n")))
 
+(defun trapt-org--apt->org (entries)
+  "Format and insert`trapt-apt-list' ENTRIES into a new Org buffer."
+  (cl-loop for item in entries
+           initially (trapt-org--init-buffer)
+           do (insert (format trapt-org-export-format
+                              (aref (cadr item) 0)
+                              (trapt-org--status-to-tags
+                               (aref (cadr item) 4))
+                              (aref (cadr item) 2)
+                              (aref (cadr item) 3)))
+           finally (org-mode-restart)))
+
 (defun trapt-org-export-marked ()
   "Export all marked items from the APT List buffer to Org mode.
 The format of the Org entries the output format for the org mode is determined
 by the variable `trapt-list-org-export-format'."
   (interactive)
-  (let ((entries (tablist-get-marked-items)))
-    (trapt-utils--check-mode
-     trapt-list--mode-name
-     (cl-loop for item in entries
-              initially (trapt-org--init-buffer)
-              do (insert (format trapt-org-export-format
-                                 (aref (cdr item) 0)
-                                 (trapt-org--status-to-tags
-                                  (aref (cdr item) 4))
-                                 (aref (cdr item) 2)
-                                 (aref (cdr item) 3)))
-              finally (org-mode-restart)))))
+  (when (string= (buffer-name) trapt-apt-list-buffer-name)
+    (let* ((names (mapcar (lambda (item) (car item)) (bui-list-get-marked)))
+           (entries (mapcar (lambda (name) (assoc name tabulated-list-entries)) names)))
+      (trapt-org--apt->org entries))))
 
 (defun trapt-org-export-all ()
   "Export all items from the APT List buffer to Org mode.
 The format of the Org entries the output format for the org mode is determined
 by the variable `trapt-list-org-export-format'."
   (interactive)
-  (let ((entries tabulated-list-entries))
-    (trapt-utils--check-mode
-     trapt-list--mode-name
-     (cl-loop for item in entries
-              initially (trapt-org--init-buffer)
-              do (insert (format trapt-org-export-format
-                                 (aref (cadr item) 0)
-                                 (trapt-org--status-to-tags
-                                  (aref (cadr item) 4))
-                                 (aref (cadr item) 2)
-                                 (aref (cadr item) 3)))
-              finally (org-mode-restart)))))
+  (when (string= (buffer-name) trapt-apt-list-buffer-name)
+    (let ((entries tabulated-list-entries))
+      (trapt-org--apt->org entries))))
 
 (defun trapt-org--generate-custom-todos ()
   "Generate custom TODO header for trapt exported Org mode files."
   (format "#+TODO: %s | %s"
-          (mapconcat #'cdr trapt-org-todo-keywords " ")
+          (mapconcat #'car trapt-org-todo-keywords " ")
           trapt-org-done-keyword))
 
 ;;;###autoload
@@ -143,22 +142,18 @@ When an operation is chosen, a that APT operation with be executed on the
 package names in the current org mode buffer marked with the todo keyword from
 `trapt-org-todo-keywords' that corresponds to the OPERATION value."
   (interactive)
-  (trapt-utils--check-mode
-   "Org"
-   (let* ((operation (completing-read "APT operation: "
-                                      (mapcar #'car
-                                              trapt-org-todo-keywords)))
-          (tag (cdr (assoc operation trapt-org-todo-keywords)))
-          (packages (trapt-utils--list-to-string
-                     (org-map-entries
-                      (lambda ()
-                        (nth 4
-                             (org-heading-components)))
-                      (format "TODO=\"%s\"" tag))))
-          (shell (bound-and-true-p trapt-shell))
-          (command (trapt-utils--build-command-string operation
-                                                      packages)))
-     (trapt-utils--run-command command shell))))
+  (let* ((tag (completing-read "APT operation: "
+                               (mapcar #'car
+                                       trapt-org-todo-keywords)))
+         
+         (function (cdr (assoc tag trapt-org-todo-keywords)))
+         (packages (mapconcat (lambda (item) (concat item " "))
+                              (org-map-entries
+                               (lambda ()
+                                 (nth 4
+                                      (org-heading-components)))
+                               (format "TODO=\"%s\"" tag)))))
+    (eval `(,function :packages ,packages :arglist ""))))
 
 (provide 'trapt-org)
 

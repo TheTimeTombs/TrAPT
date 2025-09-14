@@ -7,13 +7,25 @@
 #+author: Thomas Freeman
 #+language: en
 #+creator: Emacs 30.0.92 (Org mode 9.7.25)
- 
 
-[[./docs/img/demo.gif]]
+
+[[https://liberapay.com/TheTimeTombs/donate][https://liberapay.com/assets/widgets/donate.svg]]
+
+/New updated demo GIFs coming soon!/
 
 * Overview
 
 Use transient menus to interact with the APT package manager.
+
+* Version 2.0 - Breaking Changes!
+
+Version 2.0 of TrAPT has been updated with /breaking changes/! The following critical updates have been made:
+- All APT commands now rely on the [[https://codeberg.org/TheTimeTombs/shelly][shelly]] for commands that access a shell or remote host.
+- All list interfaces have been rewritten using Emacs [[https://gitlab.com/alezost-emacs/bui/-/tree/master][BUI]]. This applies to ~trapt-apt-list-mode~ and ~trapt-exec-report~.
+- Keybindings have changed slightly to avoid conflict with BUI default keybindings.
+- ~trapt-utils.el~ has be removed and any required functionality has been merged into the other package files.
+- ~trapt-apt-show~ removed with plans to add this functionality as part of ~trapt-apt-list-info-mode~ in a subsequent version.
+- APT statistics are no longer stored in a separate file, but are recalculated every time ~trapt~ is called. They are no longer determined when ~apt list~ is run.
 
 * Why TrAPT?
 
@@ -46,9 +58,10 @@ TrAPT was designed to fit some niche needs:
 * Requirements
 
 - Emacs 28.1 or higher
-- Emacs [[https://github.com/politza/tablist][tablist]] package
+- [[https://gitlab.com/alezost-emacs/bui/-/tree/master][BUI]]
+- [[Https://codeberg.org/TheTimeTombs/shelly][Shelly]]
 
-This package requires the tablist package be installed. You can install the tablist package with ~packages-list-packages~ or with ~use-package~:
+This package requires the bui package be installed. You can install the tablist package with ~packages-list-packages~ or with ~use-package~:
 
 #+begin_src emacs-lisp
   (use-package tablist
@@ -105,7 +118,6 @@ You can also run the following commands directly. Calling these functions will p
  | ~trapt-apt-moo~          | apt moo          |
  | ~trapt-apt-purge~        | apt purge        |
  | ~trapt-apt-remove~       | apt remove       |
- | ~trapt-apt-show~         | apt show         |
  | ~trapt-apt-update~       | apt update       |
 
 ** Manage Packages with APT List Mode
@@ -117,7 +129,7 @@ From the apt list buffer, the following commands can be run:
 | Key | Command                 | Description                               |
 |-----+-------------------------+-------------------------------------------|
 | a   | ~trapt-org-export-all~    | Export all items to an Org mode buffer    |
-| m   | ~trapt-org-export-marked~ | Export marked items to an Org mode buffer |
+| e   | ~trapt-org-export-marked~ | Export marked items to an Org mode buffer |
 | x   | ~trapt~                   | Open trapt transient menu                 |
 
 ** Using Org Mode
@@ -134,10 +146,6 @@ Headings in Org mode that are simply package names can be marked with customized
  | ~remove~       | REMOVE                   |
  | ~upgrade~      | UPGRADE                  |
 
- An example can be seen in the animation below.
-
-[[./docs/img/trapt-org-demo.gif]]
-
 ** ~trapt-exec-find~
 
 In your Emacs configuration, wrap any strings contating shell commands like the example below:
@@ -149,8 +157,6 @@ In your Emacs configuration, wrap any strings contating shell commands like the 
 #+end_src
 
 Then, after Emacs has loaded, call a list of all required executables on you system and their path using ~trapt-exec-find-report~. Any executables not found on your system will report "not found".
-
-[[./docs/img/trapt-exec-find-demo.gif]]
 
 From the report buffer, the following commands can be run:
 
@@ -180,10 +186,14 @@ TrAPT can run commands on a remote host using ssh. This uses the built-in tramp 
    'remote-fish)
 #+end_src
 
-When tramp is configured, you can then define a list of remote connections for TrAPT by customizing the variable ~trapt-remotes~:
+When tramp is configured, you can then define a list of remote connections for TrAPT by customizing the variable ~shelly-remotes~:
 
 #+begin_src emacs-lisp :tangle yes
-  (setopt trapt-remotes '("username@host1" "username2@host2"))
+  (add-to-list shelly-remotes "username@host1")
 #+end_src
 
 When the remote option is used on a TrAPT command, the user will then be prompted to select a host from ~trapt-remotes~ using ~completing-read~.
+
+* Future Plans
+- [ ] Incorporate asynchronous processes to gather APT list data. *Help Approceated*
+- [ ] Add information from ~apt show~ command into the ~trapt-apt-info~ buffer

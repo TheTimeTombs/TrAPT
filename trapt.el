@@ -2,7 +2,7 @@
 
 ;; Author: Thomas Freeman
 ;; Maintainer: Thomas Freeman
-;; Version: 1.2
+;; Version: 2.0
 ;; Package-Requires: ((emacs "28.1"))
 ;; Homepage: https://github.com/tfree87/trapt
 ;; Keywords: processes
@@ -30,111 +30,105 @@
 
 ;;; Code:
 
+(require 'shelly)
 (require 'transient)
 (require 'tablist)
-(require 'trapt-utils)
 (require 'trapt-exec-find)
 (require 'trapt-list)
 (require 'trapt-org)
 
+
+;;; customization options
+
 (defgroup trapt nil "Customization options for TrAPT."
   :group 'Processes
   :prefix "trapt-")
-
-(defcustom trapt-remotes '()
-  "A list of remote ssh connections for TrAPT.
-
-`trapt-remotes' should be a quoted list in which each element of the list is in
-the form username@host."
-  :type '(repeat string)
-  :group 'trapt)
-
-(defcustom trapt-stats-file "~/.emacs.d/trapt-stats.eld"
-  "A string with the path to the TrAPT statistics file."
-  :type '(string)
-  :group 'trapt)
 
 (defcustom trapt-apt-sourcelist-file-path "/etc/apt/sources.list"
   "The path to the APT sources."
   :type '(string)
   :group 'trapt)
 
-(defcustom trapt-shell "default"
-  "The shell to run TrAPT commands."
-  :type '(string)
-  :options '("default" "eshell" "vterm")
-  :group 'trapt)
-
 (defcustom trapt-default-host "localhost"
   "The default host for TrAPT operations.")
 
-(defvar trapt-current-host trapt-default-host)
+
+;;; variables
 
-(defvar trapt--tablist-buffers '()
-  "A list of tablist buffer names with package tablists for TrAPT.")
+(defvar trapt--apt-options '("-o \"apt::color=no\"")
+  "A list of options to always pass to APT -o.
+These options in these arguments are essential to ensure
+proper parsing of the results that are returned from APT.")
 
-(defun trapt--num-installed ()
-  "Return a string showing the number of installed packages."
-  (when (and (bound-and-true-p trapt-list--num-installed)
-             (> trapt-list--num-installed 0))
-    (format "installed packages: %s" trapt-list--num-installed)))
+(defvar trapt-current-host trapt-default-host
+  "The current host to run TrAPT commands.")
 
-(defun trapt--num-upgradable ()
-  "Return a string showing the number of upgradable packages."
-  (when (and (bound-and-true-p trapt-list--num-upgradable)
-             (> trapt-list--num-upgradable 0))
-    (format "upgradable packages: %s" trapt-list--num-upgradable)))
+(defvar trapt--package-list-buffers '()
+  "List of TrAPT buffers with package lists.")
 
-(defun trapt--num-residual ()
-  "Return a string showing the number of upgradable packages."
-  (when (and (bound-and-true-p trapt-list--num-residual)
-             (> trapt-list--num-residual 0))
-    (format "residual configs: %s" trapt-list--num-residual)))
+(defvar trapt--num-automatic 0
+  "The number of automatically installed packages.")
 
-(defun trapt--load-stats ()
-  "Load data from `trapt-stats-file', it if exists."
-  (when (file-exists-p trapt-stats-file)
-    (cl-loop for elt in (trapt-utils--read-file trapt-stats-file)
-             do (set `,(car elt) (cdr elt)))))
+(defvar trapt--num-installed 0
+  "The number of packages which can be upgraded.")
 
-(defun trapt--num-automatic ()
-  "Return a string showing the number of installed packages."
-  (when (and (bound-and-true-p trapt-list--num-auto-installed)
-             (> trapt-list--num-auto-installed 0))
-    (format "installed automatically: %s" trapt-list--num-auto-installed)))
+(defvar trapt--num-manual 0
+  "The number of manually installed packages.")
 
-(defun trapt-set-host ()
-  (interactive)
-  (thread-last
-    (add-to-list 'trapt-remotes "localhost")
-    (completing-read "Host: ")
-    (setf trapt-current-host)))
+(defvar trapt-num-upgradable 0
+  "The number of packages which can be upgraded.")
 
-(defun trapt--transient-args (arglist)
-  "Remove the value `remote' from ARGLIST and return the shortened list."
-  (if (bound-and-true-p transient-current-command)
-      ;; Return transient args
-      ;; or an empty string to prevent unwanted prompts for args
-      (or (transient-args transient-current-command) "")
-    arglist))
+(defvar trapt-num-residual 0
+  "The number of packages with residual data remaining.")
 
-(defun trapt--get-marked-packages (packages)
-  "Return a list of packages from a buffer in `trapt--tablist-buffers'.
+
+;;; general functions
 
-If the current buffer name is not in `trapt--trablist-buffers', return
-PACKAGES."
-  (if (member (buffer-name) trapt--tablist-buffers)
-      (when (caar (tablist-get-marked-items))
-        (cl-loop for item in (tablist-get-marked-items)
-                 collect (aref (cdr item) 0)))
-    packages))
+(defun trapt--calculate-stats ()
+  "Run `apt list' and collect statistics."
+  (message "Loading TrAPT stats...")
+  (with-temp-buffer
+    (insert (shelly-command-to-string "apt list --installed 2> /dev/null"
+                                      :host trapt-current-host))
+    (mark-whole-buffer)
+    (setf trapt--num-installed (count-matches "installed"))
+    (setf trapt--num-upgradable (count-matches "upgradable"))
+    (setf trapt--num-residual (count-matches "residual"))
+    (setf trapt--num-automatic (count-matches "automatic"))
+    (setf trapt--num-manual (- trapt--num-installed trapt--num-automatic))))
 
 (defun trapt--apt-cache-updated ()
   "Return a string showing the last update to APT cache."
-  (format "Updated: %s"
+  (format "last updated: %s"
           (substring (shell-command-to-string "stat -c %y /var/cache/apt/")
                      0
                      16)))
+
+(defun trapt--build-command-string (operation
+                                    &optional
+                                    sudo
+                                    packages
+                                    arguments)
+  "Concatenates the elements of an APT command string.
+
+OPERATION is a string containing a command for the APT package tool.
+
+If SUDO is non-nil then the command will be called with `sudo'.
+
+PACKAGES is list or space-separated string of packages to upgrade.
+
+ARGUMENTS is a list or space-separated string of arguments to the apt command.
+If no ARGUMENTS is passed, then the user will be prompted for a space-separated
+string containing the list of arguments to pass."
+  (thread-last
+    (when arguments
+      (concat " " arguments))
+    (concat (when packages
+              (concat " " packages)))
+    (concat " " operation)
+    (concat (if sudo
+                "sudo apt"
+              "apt"))))
 
 (cl-defun trapt--execute (operation &key packages arglist (prompt t) host sudo)
   "Run an APT command from an inferior shell.
@@ -172,19 +166,23 @@ If SUDO is non-nil, then the command will be run with sudo."
 (space separated): "
                                         operation)))
                         ""))
-         (command (trapt-utils--build-command-string
+         (command (trapt--build-command-string
                    operation
                    sudo
                    packages
                    arguments)))
-    (cond ((string= operation "list")
-           (trapt-list--create-tablist command host)
-           (when (or (not packages) (string= packages ""))
-             (trapt-list--get-stats)))
-          ((string= operation "show")
-           (trapt-utils--shell-command-to-string command))
-          (t
-           (trapt-utils--run-command command trapt-shell host)))))
+    (shelly-run-command :command command :host host)))
+
+(defun trapt--get-packages (packages)
+  "Get packages from bui-list-buffer, otherwise return PACKAGES."
+  (message (buffer-name))
+  (if packages
+      packages
+    (if (member (buffer-name) trapt--package-list-buffers)
+        (thread-last
+          (bui-list-get-marked)
+          (mapcar (lambda (item) (symbol-name (car item))))
+          (mapconcat (lambda (item) (concat item " ")))))))
 
 ;;;###autoload
 (cl-defun trapt-apt-install (&key packages arglist (prompt t))
@@ -202,7 +200,7 @@ If PROMPT is nil, then the user will not be prompted for packages and arguments
 if none are given. This should be used for non-interactive calls."
   (interactive)
   (trapt--execute "install"
-                  :packages (trapt--get-marked-packages packages)
+                  :packages (trapt--get-packages packages)
                   :arglist (trapt--transient-args arglist)
                   :prompt prompt
                   :host trapt-current-host
@@ -393,61 +391,6 @@ If REMOTE in non-nil, then the user will be prompted for a remote host from
                   :sudo t))
 
 ;;;###autoload
-(cl-defun trapt-apt-list (&key packages arglist (prompt t) remote)
-  "Run apt list. This is a wrapper function for `trapt--execute'.
-
-PACKAGES is a list of packages to upgrade. If no PACKAGES are passed, then the
-user will be prompted for a space-separated string containing the list of
-packages to upgrade.
-
-ARGLIST is a list of arguments to the apt command. If no ARGLIST is passed, then
-the user will be prompted for a space-separated string containing the list of
-arguments to pass.
-
-If PROMPT is nil, then the user will not be prompted for packages and arguments
-if none are given. This should be used for non-interactive calls.
-
-If REMOTE in non-nil, then the user will be prompted for a remote host from
-`trapt-remotes' on which to run `apt list'."
-  (interactive)
-  (let* ((arguments arglist))
-    (trapt--execute "list"
-                    :packages (trapt--get-marked-packages packages)
-                    :arglist (trapt--transient-args arglist)
-                    :prompt prompt
-                    :host trapt-current-host
-                    :sudo nil)))
-
-;;;###autoload
-(cl-defun trapt-apt-show (&key packages arglist (prompt t) remote)
-  "Run apt list. This is a wrapper function for `trapt--execute'.
-
-PACKAGES is a list of packages to upgrade. If no PACKAGES are passed, then the
-user will be prompted for a space-separated string containing the list of
-packages to upgrade.
-
-ARGLIST is a list of arguments to the apt command. If no ARGLIST is passed, then
-the user will be prompted for a space-separated string containing the list of
-arguments to pass.
-
-If PROMPT is nil, then the user will not be prompted for packages and arguments
-if none are given. This should be used for non-interactive calls.
-
-If REMOTE in non-nil, then the user will be prompted for a remote host from
-`trapt-remotes' on which to run `apt show'."
-  (interactive)
-  (get-buffer-create "*APT Show*")
-  (switch-to-buffer "*APT Show*")
-  (erase-buffer)
-  (insert
-   (trapt--execute "show"
-                   :packages (trapt--get-marked-packages packages)
-                   :arglist (trapt--transient-args arglist)
-                   :prompt prompt
-                   :host trapt-current-host
-                   :host nil)))
-
-;;;###autoload
 (cl-defun trapt-apt-moo (&key remote)
   "Run apt moo. This is a wrapper function for `trapt--execute'.
 
@@ -463,7 +406,7 @@ If REMOTE in non-nil, then the user will be prompted for a remote host from
 
 ;;;###autoload
 (cl-defun trapt-apt-edit-sources ()
-  "Opens `/etc/apt/sources.list' for editing as root user using tramp sudo"
+  "Opens `/etc/apt/sources.list' for editing as root user using tramp."
   (interactive)
   (let* ((host (if (trapt--transient-remote remote)
                    (format "ssh:%s|" (trapt--get-host t))
@@ -473,12 +416,55 @@ If REMOTE in non-nil, then the user will be prompted for a remote host from
                        trapt-apt-sourcelist-file-path)))
     (find-file path)))
 
+
+;;; helper functions for transient menus
+
+(defun trapt--num-installed ()
+  "Format installed packages number for display."
+  (format "installed: %s" trapt--num-installed))
+
+(defun trapt--num-manual ()
+  "Format manually installed packages number for display."
+  (format "manually installed: %s" trapt--num-manual))
+
+(defun trapt--num-upgradable ()
+  "Format upgradable packages number for display."
+  (format "upgradable: %s" trapt--num-upgradable))
+
+(defun trapt--num-residual ()
+  "Return a string showing the number of upgradable packages."
+  (format "residual configs: %s" trapt--num-residual))
+
+(defun trapt--num-automatic ()
+  "Format automatically isntalled packages number for display."
+  (format "auto installed: %s" trapt--num-automatic))
+
+(defun trapt-select-host ()
+  "Prompt the user for a host and set `trapt-current-remote'."
+  (interactive)
+  (setf trapt-current-host (shelly-select-host))
+  (trapt--calculate-stats))
+
+(defun trapt--transient-args (arglist)
+  "Remove the value `remote' from ARGLIST and return the shortened list."
+  (if (bound-and-true-p transient-current-command)
+      ;; Return transient args
+      ;; or an empty string to prevent unwanted prompts for args
+      (or (mapconcat #' identity (transient-args transient-current-command) " ")
+          "")
+    arglist))
+
+
+;;; transient menus and helper functions
+
 (transient-define-prefix trapt--apt-upgrade-transient ()
   "Transient menu for apt upgrade commands."
-  ["Info"
-   (:info #'trapt--apt-cache-updated)
-   (:info #'trapt--num-upgradable
-          :if trapt--num-upgradable)]
+  ["Host"
+   ("H" "host" trapt-select-host
+    :transient t
+    :description (lambda () (format "Host: %s" trapt-current-host)))]
+  ["APT Package Info"
+   (:info #'trapt--num-upgradable)]
   ["Arguments"
    ("s" "simulate" "--simulate")
    ("y" "assume yes" "--assume-yes")
@@ -487,17 +473,18 @@ If REMOTE in non-nil, then the user will be prompted for a remote host from
    ("c" "autoclean" trapt-apt-autoclean)
    ("f" "full upgrade" trapt-apt-full-upgrade)
    ("u" "update" trapt-apt-update)
-   ("U" "upgrade" trapt-apt-upgrade)]
-  ["Host"
-   ("H" "host" trapt-set-host
-    :transient t
-    :description (lambda () (format "Host: %s" trapt-current-host)))])
+   ("U" "upgrade" trapt-apt-upgrade)])
 
 (transient-define-prefix trapt--apt-install-transient ()
   "Transient menu for apt install command."
-  ["Localhost Info"
-   (:info #'trapt--num-installed
-          :if trapt--num-installed)]
+  ["Host"
+   ("H" "host" trapt-select-host
+    :transient t
+    :description (lambda () (format "Host: %s" trapt-current-host)))]
+  ["APT Package Info"
+   (:info #'trapt--num-installed)
+   (:info #'trapt--num-automatic)
+   (:info #'trapt--num-manual)]
   ["Arguments"
    ("d" "download only" "--download-only")
    ("n" "no recommends" "--no-install-recommends")
@@ -505,25 +492,27 @@ If REMOTE in non-nil, then the user will be prompted for a remote host from
    ("s" "simulate" "--simulate")
    ("y" "assume yes" "--assume-yes")]
   ["APT Install"
-   ("i" "install" trapt-apt-install)]
-  ["Host"
-   ("H" "host" trapt-set-host
-    :transient t
-    :description (lambda () (format "Host: %s" trapt-current-host)))])
+   ("b" "install build deps" trapt-apt-build-dep)
+   ("i" "install" trapt-apt-install)])
 
 (transient-define-prefix trapt--apt-remove-transient ()
   "Transient menu for apt remove commands."
+  ["Host"
+   ("H" "host" trapt-select-host
+    :transient t
+    :description (lambda () (format "Host: %s" trapt-current-host)))]
+  ["APT Package Info"
+   (:info #'trapt--num-installed)
+   (:info #'trapt--num-automatic)
+   (:info #'trapt--num-manual)
+   (:info #'trapt--num-residual)]
   ["Arguments"
    ("s" "simulate" "--simulate")
    ("y" "assume yes" "--assume-yes")]
   ["APT Removal Commands"
    ("a" "autoremove" trapt-apt-autoremove)
    ("p" "purge" trapt-apt-purge)
-   ("r" "remove" trapt-apt-remove)]
-  ["Host"
-   ("H" "host" trapt-set-host
-    :transient t
-    :description (lambda () (format "Host: %s" trapt-current-host)))])
+   ("r" "remove" trapt-apt-remove)])
 
 (transient-define-prefix trapt--apt-other-transient ()
   "Transient menu for apt package manager."
@@ -532,48 +521,36 @@ If REMOTE in non-nil, then the user will be prompted for a remote host from
    ("m" "moo" trapt-apt-moo)
    ("s" "show" trapt-apt-show)]
   ["Host"
-   ("H" "host" trapt-set-host
+   ("H" "host" trapt-select-host
     :transient t
     :description (lambda () (format "Host: %s" trapt-current-host)))])
 
-(transient-define-prefix trapt--apt-list-transient ()
-  "Transient menu for apt list command."
-  ["Arguments"
-   ("a" "all versions" "--all-versions")
-   ("i" "installed" "--installed")
-   ("u" "upgradable" "--upgradable")]
-  ["APT List"
-   ("l" "list" trapt-apt-list)]
-  ["Host"
-   ("H" "host" trapt-set-host
-    :transient t
-    :description (lambda () (format "Host: %s" trapt-current-host)))])
-
-;;;###autoload (autoload 'trapt "trapt.el" "A transient menu for APT." t)
-(transient-define-prefix trapt ()
+(transient-define-prefix trapt--transient ()
   "Transient menu for apt package manager."
-  ["Localhost Info"
-   (:info #'trapt--num-installed
-          :if trapt--num-installed)
-   (:info #'trapt--num-automatic
-          :if trapt--num-automatic)
-   (:info #'trapt--num-upgradable
-          :if trapt--num-upgradable)
-   (:info #'trapt--num-residual
-          :if trapt--num-residual)]
+  ["Host"
+   ("H" "host" trapt-select-host
+    :transient t
+    :description (lambda () (format "Host: %s" trapt-current-host)))]
+  ["APT Package Info"
+   (:info #'trapt--num-installed)
+   (:info #'trapt--num-automatic)
+   (:info #'trapt--num-manual)
+   (:info #'trapt--num-upgradable)
+   (:info #'trapt--num-residual)]
   ["APT Package Manager"
    ("i" "install packages" trapt--apt-install-transient)
-   ("l" "list packages" trapt--apt-list-transient)
+   ("l" "list packages" trapt-list--apt-list-transient)
    ("o" "other commands" trapt--apt-other-transient)
    ("r" "remove/purge packages" trapt--apt-remove-transient)
-   ("u" "update/upgrade/autoclean" trapt--apt-upgrade-transient)]
-  ["Host"
-   ("H" "host" trapt-set-host
-    :transient t
-    :description (lambda () (format "Host: %s" trapt-current-host)))])
+   ("u" "update/upgrade/autoclean" trapt--apt-upgrade-transient)])
 
-;; Load saved statistics after package load
-(eval-after-load "trapt.el" (trapt--load-stats))
+;;;###autoload
+(defun trapt ()
+  "Run `trapt--calculate-state' and then `trapt--transient'.
+This function is the man entry point for TrAPT."
+  (interactive)
+  (trapt--calculate-stats)
+  (trapt--transient))
 
 (provide 'trapt)
 
