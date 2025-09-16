@@ -135,7 +135,7 @@ used to return the list of executables to display."
   :sort-key '(package)
   :marks '((install . ?I)))
 
-(let ((map (make-sparse-keymap)))
+(let ((map trapt-exec-find-list-mode-map))
   (define-key map "p" #'trapt-exec-find-goto-path)
   (define-key map "c" #'trapt-exec-find-goto-call)
   (define-key map "x" #'trapt))
@@ -161,16 +161,14 @@ at point."]))
 (defun trapt-exec-find-goto-path ()
   "Opens the path for the executable at point."
   (interactive)
-  (trapt-utils--check-mode "TrAPT Exec Find"
-                           (find-file
-                            (file-name-directory
-                             (trapt-utils--get-tablist-item 2)))))
+  (find-file
+   (file-name-directory
+    (cdr (assoc 'path (bui-list-current-entry))))))
 
 (defun trapt-exec-find-goto-call ()
   "Opens the file in which `trapt-exec-find' was called for the item at point."
   (interactive)
-  (trapt-utils--check-mode "TrAPT Exec Find"
-                           (find-file (trapt-utils--get-tablist-item 5))))
+  (find-file (cdr (assoc 'calling-path (bui-list-current-entry)))))
 
 ;;;###autoload
 (cl-defun trapt-exec-find (command-string
