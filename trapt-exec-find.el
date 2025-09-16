@@ -161,14 +161,20 @@ at point."]))
 (defun trapt-exec-find-goto-path ()
   "Opens the path for the executable at point."
   (interactive)
-  (find-file
-   (file-name-directory
-    (cdr (assoc 'path (bui-list-current-entry))))))
+  (if (string= (buffer-name) trapt-exec-find--buffer-name)
+      (find-file
+       (file-name-directory
+        (cdr (assoc 'path (bui-list-current-entry)))))
+    (error (format "This function can only be used in %s buffers."
+                   trapt-exec-find--buffer-name))))
 
 (defun trapt-exec-find-goto-call ()
   "Opens the file in which `trapt-exec-find' was called for the item at point."
   (interactive)
-  (find-file (cdr (assoc 'calling-path (bui-list-current-entry)))))
+  (if (string= (buffer-name) trapt-exec-find--buffer-name)
+      (find-file (cdr (assoc 'calling-path (bui-list-current-entry))))
+    (error (format "This function can only be used in %s buffers."
+                   trapt-exec-find--buffer-name))))
 
 ;;;###autoload
 (cl-defun trapt-exec-find (command-string
