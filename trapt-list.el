@@ -253,7 +253,6 @@ arguments to pass."
   (interactive)
   (thread-last
     (trapt--transient-args arglist)
-    (mapconcat (lambda (item) (concat item " ")))
     (concat "apt list -o \"apt::color=no\" "
             nil
             (or search-term
