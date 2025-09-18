@@ -100,7 +100,8 @@ proper parsing of the results that are returned from APT.")
 (defun trapt--apt-cache-updated ()
   "Return a string showing the last update to APT cache."
   (format "last updated: %s"
-          (substring (shell-command-to-string "stat -c %y /var/cache/apt/")
+          (substring (shelly-command-to-string "stat -c %y /var/cache/apt/"
+                                               trapt-current-host)
                      0
                      16)))
 
@@ -464,6 +465,7 @@ If REMOTE in non-nil, then the user will be prompted for a remote host from
     :transient t
     :description (lambda () (format "Host: %s" trapt-current-host)))]
   ["APT Package Info"
+   (:info #'trapt--apt-cache-updated)
    (:info #'trapt--num-upgradable)]
   ["Arguments"
    ("s" "simulate" "--simulate")
@@ -532,6 +534,7 @@ If REMOTE in non-nil, then the user will be prompted for a remote host from
     :transient t
     :description (lambda () (format "Host: %s" trapt-current-host)))]
   ["APT Package Info"
+   (:info #'trapt--apt-cache-updated)
    (:info #'trapt--num-installed)
    (:info #'trapt--num-automatic)
    (:info #'trapt--num-manual)
