@@ -101,7 +101,7 @@ proper parsing of the results that are returned from APT.")
   "Return a string showing the last update to APT cache."
   (format "last updated: %s"
           (substring (shelly-command-to-string "stat -c %y /var/cache/apt/"
-                                               trapt-current-host)
+                                               :host trapt-current-host)
                      0
                      16)))
 
