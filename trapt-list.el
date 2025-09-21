@@ -174,6 +174,7 @@ ARGS must be a series of `trapt-apt' entry type IDs to return."
 
 (defun trapt-apt-list--describe (&rest packages)
   "Display entries for PACKAGES in an info buffer."
+  (add-to-list 'trapt--package-list-buffers trapt-list--buffer-name)
   (bui-get-display-entries 'trapt-apt 'info (cons 'id packages)))
 
 (bui-define-interface trapt-apt list

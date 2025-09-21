@@ -220,6 +220,7 @@ manage this package. Currently, this if for reference purposes only."
 (defun trapt-exec-find-report ()
   "Generate a report of all packages identified with `trapt-exec-find'."
   (interactive)
+  (add-to-list 'trapt--package-list-buffers trapt-exec-find--buffer-name)
   (bui-get-display-entries 'trapt-exec-find 'list))
 
 (provide 'trapt-exec-find)

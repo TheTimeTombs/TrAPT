@@ -176,7 +176,6 @@ If SUDO is non-nil, then the command will be run with sudo."
 
 (defun trapt--get-packages (packages)
   "Get packages from bui-list-buffer, otherwise return PACKAGES."
-  (message (buffer-name))
   (if packages
       packages
     (if (member (buffer-name) trapt--package-list-buffers)
