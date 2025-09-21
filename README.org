@@ -8,6 +8,7 @@
 #+language: en
 #+creator: Emacs 30.0.92 (Org mode 9.7.25)
 
+*NOTE: Future updates to TrAPT will be done through Codeberg.org at this link: [[https://codeberg.org/TheTimeTombs/TrAPT]]. This repository will be archived indefinitely.*
 
 [[https://liberapay.com/TheTimeTombs/donate][https://liberapay.com/assets/widgets/donate.svg]]
 
